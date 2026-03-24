@@ -1,0 +1,61 @@
+services:
+  traefik:
+    image: traefik:v3.1
+    command:
+      - --api.dashboard=true
+      - --api.insecure=true
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - web
+
+  proyecto-clase:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: proyecto-clase-app
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.proyecto-clase.rule=Host(`${TRAEFIK_APP_HOST:-proyecto.localhost}`) || Host(`localhost`) || HostRegexp(`{host:[0-9.]+}`)
+      - traefik.http.routers.proyecto-clase.entrypoints=web
+      - traefik.http.services.proyecto-clase.loadbalancer.server.port=80
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - web
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: proyecto-clase-backend
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.proyecto-backend.rule=PathPrefix(`/api`) || PathPrefix(`/imagenes`)
+      - traefik.http.routers.proyecto-backend.entrypoints=web
+      - traefik.http.routers.proyecto-backend.priority=100
+      - traefik.http.services.proyecto-backend.loadbalancer.server.port=3000
+    volumes:
+      - ./imagenes:/app/imagenes
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - web
+    restart: unless-stopped
+
+networks:
+  web:
+    name: proyecto-clase-web
