@@ -1,0 +1,24 @@
+{
+  "name": "codekeys-scraper",
+  "version": "1.0.0",
+  "description": "Scraper de precios para CodeKeys — CDKeys, Instant Gaming, Eneba",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+    "cdkeys": "node -e \"import('./scrapers/cdkeys.js').then(m => m.scrapeCDKeys('Cyberpunk 2077','steam').then(console.log))\"",
+    "test:cdkeys": "node test/test-cdkeys.js",
+    "test:ig": "node test/test-ig.js",
+    "test:eneba": "node test/test-eneba.js"
+  },
+  "dependencies": {
+    "axios": "^1.7.2",
+    "cheerio": "^1.0.0",
+    "dotenv": "^17.4.0",
+    "mysql2": "^3.10.0",
+    "playwright": "^1.45.0",
+    "playwright-extra": "^4.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
+  }
+}
