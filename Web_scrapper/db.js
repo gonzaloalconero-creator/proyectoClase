@@ -14,6 +14,10 @@ const pool = mysql.createPool({
   connectionLimit: 5,
 });
 
+  export async function closePool() {
+  await pool.end();
+}
+
 /**
  * Actualiza (o inserta) una oferta en la BD.
  * Llama al stored procedure sp_actualizar_precio si la oferta existe,
@@ -37,7 +41,7 @@ export async function updateOfferInDB({ slug, storeCode, platform, price, region
     const [[plat]]  = await conn.query('SELECT id FROM plataformas WHERE codigo = ?', [platform]);
 
     if (!game || !store || !plat) {
-      console.warn(`    ⚠️  Entidad no encontrada en BD: slug=${slug} store=${storeCode} plat=${platform}`);
+      console.warn(`     Entidad no encontrada en BD: slug=${slug} store=${storeCode} plat=${platform}`);
       return;
     }
 
@@ -63,4 +67,7 @@ export async function updateOfferInDB({ slug, storeCode, platform, price, region
   } finally {
     conn.release();
   }
+
+
+  
 }
