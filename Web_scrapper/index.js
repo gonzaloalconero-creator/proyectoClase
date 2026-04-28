@@ -8,7 +8,7 @@ import { scrapeCDKeys }        from './scrapers/cdkeys.js';
 import { scrapeInstantGaming } from './scrapers/instantgaming.js';
 import { scrapeEneba }         from './scrapers/eneba.js';
 
-// ── Juegos a scrapear (slug local => búsqueda en cada tienda) ──
+// Juegos a scrapear (slug local => búsqueda en cada tienda) 
 const GAMES = [
   { slug: 'cyberpunk',  search: 'Cyberpunk 2077',             platform: 'steam' },
   { slug: 'witcher3',   search: 'The Witcher 3 Wild Hunt',     platform: 'steam' },
@@ -82,12 +82,12 @@ async function run() {
     // Pausa extra entre tiendas
     await sleep(3000);
   }
-  // Para procesar un solo ciclo de scraping, descomenta estas líneas y comenta el setTimeout al final
+  // Para procesar un solo ciclo de scraping, descomentar estas líneas y comentar el setTimeout al final
   //console.log('\n Scraping completado');
   //process.exit(0);
 
 
-// Para scrapear continuamente cada 5 minutos, dejamos el pool abierto y re-lanzamos run() con setTimeout
+// Para scrapear continuamente cada 5 minutos, dejar el pool abierto y re-lanzar run() con setTimeout
 console.log('\n  Esperando 5 minutos para el siguiente ciclo...');
 await closePool();
 setTimeout(run, 5 * 60 * 1000);
