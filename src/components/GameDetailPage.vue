@@ -31,6 +31,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import GameOffersList from './GameOffersList.vue'
 import Chart from 'chart.js/auto'
 import { getPriceHistory } from '../services/priceHistory'
+import { fetchOfertas, fetchPrecioHistorial } from '../services/apiService'
 
 const props = defineProps({
   game: { type: Object, required: true }
@@ -64,55 +65,11 @@ let chartInstance = null
 
 const priceHistory = ref([])
 
-const keyStores = [
-  { key: 'eneba', name: 'Eneba', rating: 4.2, votes: 319 },
-  { key: 'instagaming', name: 'Instant Gaming', rating: 4.7, votes: 367 },
-  { key: 'kinguin', name: 'Kinguin', rating: 4.0, votes: 157 },
-  { key: 'g2a', name: 'G2A', rating: 3.9, votes: 63 },
-  { key: 'gamivo', name: 'Gamivo', rating: 4.1, votes: 210 },
-  { key: 'cdkeys', name: 'CDKeys', rating: 4.3, votes: 180 },
-  { key: 'hrkgame', name: 'HRKGame', rating: 3.8, votes: 95 },
-  { key: 'mmoga', name: 'MMOGA', rating: 3.7, votes: 120 },
-  { key: 'sologame', name: 'Sologame', rating: 3.5, votes: 80 },
-  { key: 'royalcdkeys', name: 'RoyalCDKeys', rating: 4.0, votes: 60 }
-]
-const platforms = [
-  { key: 'steam', name: 'Steam' },
-  { key: 'epic', name: 'Epic Games' },
-  { key: 'psn', name: 'PSN' },
-  { key: 'xbox', name: 'Xbox' },
-  { key: 'origin', name: 'Origin' },
-  { key: 'uplay', name: 'Ubisoft Connect' }
-]
+// TODO: keyStores y storeOffers simulados comentados — datos vienen de la BD
+// const keyStores = [ ... ]
+// const storeOffers = computed(() => { ... generación simulada ... })
 
-const storeOffers = computed(() => {
-  // Generar 20 ofertas, alternando entre clave y cuenta
-  const offers = [];
-  for (let i = 0; i < 20; i++) {
-    const keyStore = keyStores[i % keyStores.length];
-    const platform = platforms[i % platforms.length];
-    // Simular precios: las cuentas son más baratas
-    const isAccount = i % 4 === 3; // Cada 4, una cuenta
-    const basePrice = 30 - i * 0.7;
-    const finalPrice = isAccount ? (basePrice * 0.55).toFixed(2) : (basePrice).toFixed(2);
-    offers.push({
-      id: `${props.game.key}-${keyStore.key}-${i}`,
-      storeName: keyStore.name,
-      storeLogo: `/logos/${keyStore.key}.png`,
-      rating: keyStore.rating,
-      votes: keyStore.votes,
-      platform: platform.name,
-      platformIcon: `/platforms/${platform.key}.png`,
-      edition: isAccount ? 'Cuenta' : 'Clave',
-      originalPrice: isAccount ? null : (parseFloat(finalPrice) + 5).toFixed(2),
-      couponPercent: isAccount ? 0 : [13, 14, 0, 0][i % 4],
-      couponCode: isAccount ? '' : ['AKSDRFFL', 'AKS14', '', ''][i % 4],
-      finalPrice: finalPrice
-    });
-  }
-  // Ordenar de menor a mayor precio final
-  return offers.sort((a, b) => parseFloat(a.finalPrice) - parseFloat(b.finalPrice));
-});
+const storeOffers = ref([])
 
 const shortDescription = computed(() => {
   // Simulación de descripción resumida
@@ -144,19 +101,24 @@ function renderChart() {
   })
 }
 
-watch(() => props.game, () => {
-  if (props.game) {
-    priceHistory.value = getPriceHistory(props.game.key)
-    setTimeout(renderChart, 100)
+async function loadGameData(slug) {
+  try {
+    storeOffers.value = await fetchOfertas(slug)
+  } catch {
+    storeOffers.value = []
   }
-})
+  try {
+    const historial = await fetchPrecioHistorial(slug)
+    priceHistory.value = historial.length ? historial : getPriceHistory(slug)
+  } catch {
+    priceHistory.value = getPriceHistory(slug)
+  }
+  setTimeout(renderChart, 100)
+}
 
-onMounted(() => {
-  if (props.game) {
-    priceHistory.value = getPriceHistory(props.game.key)
-    setTimeout(renderChart, 100)
-  }
-})
+watch(() => props.game, (g) => { if (g) loadGameData(g.key) })
+
+onMounted(() => { if (props.game) loadGameData(props.game.key) })
 </script>
 
 <style scoped>

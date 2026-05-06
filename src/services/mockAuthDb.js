@@ -1,94 +1,53 @@
 import { clearHistorySession, startHistorySession } from './sessionHistoryDb'
 
-const USERS_KEY = 'codekeys-users-db'
 const SESSION_KEY = 'codekeys-session-user'
 
-function readUsers() {
-  const raw = localStorage.getItem(USERS_KEY)
-  if (!raw) {
-    const seeded = [
-      {
-        id: 'admin_seed',
-        name: 'Administrador',
-        email: 'admin@codekeys.local',
-        password: 'admin123',
-        role: 'admin',
-        createdAt: new Date().toISOString()
-      }
-    ]
-    writeUsers(seeded)
-    return seeded
-  }
+export async function registerUser({ name, email, password }) {
   try {
-    const users = JSON.parse(raw)
-    return Array.isArray(users)
-      ? users.map((u) => ({ ...u, role: u.role || 'normal' }))
-      : []
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, password })
+    })
+    const data = await res.json()
+    if (data.ok) {
+      localStorage.setItem(SESSION_KEY, JSON.stringify(data.user))
+      startHistorySession(data.user.id)
+    }
+    return data
   } catch {
-    return []
+    return { ok: false, error: 'SERVER_ERROR' }
   }
 }
 
-function writeUsers(users) {
-  localStorage.setItem(USERS_KEY, JSON.stringify(users))
-}
-
-function publicUser(user) {
-  return {
-    id: user.id,
-    name: user.name,
-    email: user.email,
-    role: user.role || 'normal'
+export async function loginUser({ email, password }) {
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    })
+    const data = await res.json()
+    if (data.ok) {
+      localStorage.setItem(SESSION_KEY, JSON.stringify(data.user))
+      startHistorySession(data.user.id)
+    }
+    return data
+  } catch {
+    return { ok: false, error: 'SERVER_ERROR' }
   }
-}
-
-export function registerUser({ name, email, password }) {
-  const users = readUsers()
-  const cleanEmail = email.trim().toLowerCase()
-
-  const exists = users.some((u) => u.email === cleanEmail)
-  if (exists) {
-    return { ok: false, error: 'EMAIL_EXISTS' }
-  }
-
-  const user = {
-    id: `u_${Date.now()}_${Math.floor(Math.random() * 100000)}`,
-    name: name.trim(),
-    email: cleanEmail,
-    password,
-    role: 'normal',
-    createdAt: new Date().toISOString()
-  }
-
-  users.push(user)
-  writeUsers(users)
-  localStorage.setItem(SESSION_KEY, user.id)
-  startHistorySession(user.id)
-
-  return { ok: true, user: publicUser(user) }
-}
-
-export function loginUser({ email, password }) {
-  const users = readUsers()
-  const cleanEmail = email.trim().toLowerCase()
-  const user = users.find((u) => u.email === cleanEmail && u.password === password)
-
-  if (!user) {
-    return { ok: false, error: 'INVALID_CREDENTIALS' }
-  }
-
-  localStorage.setItem(SESSION_KEY, user.id)
-  startHistorySession(user.id)
-  return { ok: true, user: publicUser(user) }
 }
 
 export function getSessionUser() {
-  const sessionId = localStorage.getItem(SESSION_KEY)
-  if (!sessionId) return null
-
-  const users = readUsers()
-  const user = users.find((u) => u.id === sessionId)
-  return user ? publicUser(user) : null
+  const raw = localStorage.getItem(SESSION_KEY)
+  if (!raw) return null
+  try {
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object' || !parsed.id) return null
+    return parsed
+  } catch {
+    return null
+  }
 }
 
 export function logoutUser() {

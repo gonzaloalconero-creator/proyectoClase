@@ -1,41 +1,18 @@
-﻿<script setup>
-import { computed } from 'vue'
-import { applyGameCatalog } from '../services/mockCatalogDb'
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import { fetchJuegos } from '../services/apiService'
 
 const props = defineProps({
-  currency: {
-    type: String,
-    default: 'EUR'
-  },
-  locale: {
-    type: String,
-    default: 'es'
-  }
+  currency: { type: String, default: 'EUR' },
+  locale:   { type: String, default: 'es'  }
 })
 
 const USD_RATE = 1.08
 
 const labels = {
-  es: {
-    offer: 'OFERTA',
-    was: 'Antes'
-  },
-  en: {
-    offer: 'DEAL',
-    was: 'Was'
-  }
+  es: { offer: 'OFERTA', was: 'Antes' },
+  en: { offer: 'DEAL',   was: 'Was'   }
 }
-
-const baseTickerGames = [
-  { key: 'cyberpunk', name: 'Cyberpunk 2077', price: 5.49, was: 59.99, discount: 91 },
-  { key: 'witcher3', name: 'The Witcher 3', price: 3.89, was: 29.99, discount: 87 },
-  { key: 'eldenring', name: 'ELDEN RING', price: 24.99, was: 59.99, discount: 58 },
-  { key: 'rdr2', name: 'Red Dead Redemption 2', price: 12.99, was: 59.99, discount: 78 },
-  { key: 'hogwarts', name: 'Hogwarts Legacy', price: 19.99, was: 59.99, discount: 67 },
-  { key: 'spiderman', name: 'Spider-Man Remastered', price: 23.49, was: 59.99, discount: 61 },
-  { key: 'godofwar', name: 'God of War', price: 17.99, was: 49.99, discount: 64 },
-  { key: 'helldivers2', name: 'HELLDIVERS 2', price: 31.99, was: 39.99, discount: 20 }
-]
 
 function t(key) {
   return labels[props.locale]?.[key] || labels.es[key]
@@ -48,9 +25,18 @@ function money(value) {
   return `${symbol}${normalized.toFixed(2)}`
 }
 
-const tickerGames = computed(() => {
-  const merged = applyGameCatalog(baseTickerGames)
-  return merged.slice(0, 10)
+const tickerGames = ref([])
+
+onMounted(async () => {
+  try {
+    const juegos = await fetchJuegos()
+    tickerGames.value = juegos
+      .filter(g => g.discount > 0)
+      .sort((a, b) => b.discount - a.discount)
+      .slice(0, 10)
+  } catch {
+    tickerGames.value = []
+  }
 })
 
 const marqueeItems = computed(() => [...tickerGames.value, ...tickerGames.value])
@@ -71,4 +57,3 @@ const marqueeItems = computed(() => [...tickerGames.value, ...tickerGames.value]
     </div>
   </div>
 </template>
-

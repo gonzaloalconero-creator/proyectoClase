@@ -1,6 +1,7 @@
 ﻿<script setup>
-import { ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { applyGameCatalog, applyStoreCatalog } from '../services/mockCatalogDb'
+import { fetchJuegos, fetchTiendas } from '../services/apiService'
 
 const props = defineProps({
   currency: {
@@ -108,113 +109,20 @@ function t(key) {
   return i18n[props.locale]?.[key] || i18n.es[key]
 }
 
-const featuredGames = [
-  {
-    key: 'cyberpunk',
-    name: 'Cyberpunk 2077',
-    img: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1091500/library_600x900.jpg',
-    platform: 'PC Steam',
-    price: 5.49,
-    was: 59.99,
-    discount: '-91%',
-    desc: 'Un RPG futurista de mundo abierto desarrollado por CD Projekt Red.'
-  },
-  {
-    key: 'witcher3',
-    name: 'The Witcher 3: Wild Hunt',
-    img: 'https://cdn.cloudflare.steamstatic.com/steam/apps/292030/library_600x900.jpg',
-    platform: 'PC Steam',
-    price: 3.89,
-    was: 29.99,
-    discount: '-87%',
-    desc: 'Aventura épica de fantasía y monstruos, protagonizada por Geralt de Rivia.'
-  },
-  {
-    key: 'eldenring',
-    name: 'ELDEN RING',
-    img: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1245620/library_600x900.jpg',
-    platform: 'PC Steam',
-    price: 24.99,
-    was: 59.99,
-    discount: '-58%',
-    desc: 'Acción y rol en un mundo abierto creado por FromSoftware y George R. R. Martin.'
-  },
-  {
-    key: 'rdr2',
-    name: 'Red Dead Redemption 2',
-    img: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1174180/library_600x900.jpg',
-    platform: 'PC Steam',
-    price: 12.99,
-    was: 59.99,
-    discount: '-78%',
-    desc: 'Western de mundo abierto con una historia profunda y realista.'
-  },
-  {
-    key: 'hogwarts',
-    name: 'Hogwarts Legacy',
-    img: 'https://cdn.cloudflare.steamstatic.com/steam/apps/990080/library_600x900.jpg',
-    platform: 'PC Steam',
-    price: 19.99,
-    was: 59.99,
-    discount: '-67%',
-    desc: 'Explora el mundo mágico de Harry Potter en una nueva aventura RPG.'
-  },
-  {
-    key: 'spiderman',
-    name: "Marvel's Spider-Man Remastered",
-    img: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1817070/library_600x900.jpg',
-    platform: 'PC Steam',
-    price: 23.49,
-    was: 59.99,
-    discount: '-61%',
-    desc: 'Vive la experiencia de ser Spider-Man en esta remasterización de acción.'
-  }
-]
+// TODO: featuredGames y newestGames comentados — datos vienen de la BD
+// const featuredGames = [ ... ]
+// const newestGames = [ ... ]
 
-const newestGames = [
-  {
-    key: 'helldivers2',
-    name: 'HELLDIVERS 2',
-    img: 'https://cdn.cloudflare.steamstatic.com/steam/apps/553850/library_600x900.jpg',
-    platform: 'PC Steam',
-    price: 31.99,
-    was: 39.99,
-    discount: '-20%',
-    desc: 'Shooter cooperativo de ciencia ficción con acción frenética.'
-  },
-  {
-    key: 'dragonsdogma2',
-    name: "Dragon's Dogma 2",
-    img: 'https://cdn.cloudflare.steamstatic.com/steam/apps/2054970/library_600x900.jpg',
-    platform: 'PC Steam',
-    price: 41.49,
-    was: 69.99,
-    discount: '-41%',
-    desc: 'Secuela del aclamado RPG de acción y fantasía.'
-  },
-  {
-    key: 'fc25',
-    name: 'EA SPORTS FC 25',
-    img: 'https://cdn.cloudflare.steamstatic.com/steam/apps/2669320/library_600x900.jpg',
-    platform: 'PC Steam',
-    price: 35.99,
-    was: 69.99,
-    discount: '-49%',
-    desc: 'La nueva entrega de la saga de fútbol más popular.'
-  },
-  {
-    key: 'gow',
-    name: 'God of War',
-    img: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1593500/library_600x900.jpg',
-    platform: 'PC Steam',
-    price: 17.99,
-    was: 49.99,
-    discount: '-64%',
-    desc: 'Kratos regresa en una épica aventura de acción y mitología.'
-  }
-]
+const featuredGames = ref([])
+const newestGames = ref([])
 
-let listGames = [
+// TODO: listGames hardcodeado comentado — datos vienen de la BD
+// let listGames = [
+//   { key: 'cyberpunk', ... },
+const listGames = ref([])
+
+/* BLOQUE COMENTADO — hardcoded original:
+let _listGames_hardcoded = [
   {
     key: 'cyberpunk',
     name: 'Cyberpunk 2077',
@@ -448,47 +356,11 @@ let listGames = [
   }
 ]
 
-function createSyntheticPlatformGames() {
-  const genres = ['Accion', 'RPG', 'Aventura', 'FPS', 'Indie', 'Deportes', 'Carreras', 'Terror']
-
-  const platforms = [
-    { key: 'steam', label: 'PC Steam', title: 'Steam Arena', tag: 'Steam', seed: 3 },
-    { key: 'epic', label: 'Epic Games / PC', title: 'Epic Legends', tag: 'Epic', seed: 7 },
-    { key: 'ps5', label: 'PS5', title: 'PlayStation Next', tag: 'PS5', seed: 11 },
-    { key: 'ps4', label: 'PS4', title: 'PlayStation Classic', tag: 'PS4', seed: 13 },
-    { key: 'xbox', label: 'Xbox / PC', title: 'Xbox Impact', tag: 'Xbox', seed: 17 },
-    { key: 'switch', label: 'Switch', title: 'Switch Worlds', tag: 'Switch', seed: 19 }
-  ]
-
-  const generated = []
-
-  platforms.forEach((plat) => {
-    for (let i = 1; i <= 100; i += 1) {
-      const price = Number((5 + ((i * 7 + plat.seed) % 55) + (i % 3) * 0.49).toFixed(2))
-      const was = Number((price * (1.25 + ((i + plat.seed) % 5) * 0.12)).toFixed(2))
-      const discount = Math.max(10, Math.round((1 - price / was) * 100))
-      const genre = genres[(i + plat.seed) % genres.length]
-      const img = `https://picsum.photos/seed/${plat.key}-game-${String(i).padStart(3, '0')}/600/900`
-
-      generated.push({
-        key: `${plat.key}-extra-${String(i).padStart(3, '0')}`,
-        name: `${plat.title} ${String(i).padStart(3, '0')}`,
-        img,
-        platform: plat.label,
-        platformTag: plat.tag,
-        genre,
-        price,
-        was,
-        discount
-      })
-    }
-  })
-
-  return generated
-}
-
-listGames.push(...createSyntheticPlatformGames())
-listGames = applyGameCatalog(listGames)
+// TODO: createSyntheticPlatformGames comentado — juegos vienen de la BD
+// function createSyntheticPlatformGames() { ... }
+// listGames.push(...createSyntheticPlatformGames())
+// listGames = applyGameCatalog(listGames)
+*/
 
 const upcomingGames = [
   {
@@ -529,38 +401,36 @@ const upcomingGames = [
   }
 ]
 
-let stores = [
-  { key: 'cdkeys', logo: '/assets/stores/cdkeys.png', initials: 'CD', name: 'CDKeys', url: 'cdkeys.com', count: '42k', best: 'Cyberpunk 2077', disc: '-93%', price: 3.99 },
-  { key: 'eneba', logo: '/assets/stores/eneba.png', initials: 'EN', name: 'Eneba', url: 'eneba.com', count: '95k', best: 'The Witcher 3', disc: '-93%', price: 1.99 },
-  { key: 'g2a', logo: '/assets/stores/g2a.png', initials: 'G2', name: 'G2A', url: 'g2a.com', count: '180k', best: 'Dark Souls III', disc: '-91%', price: 3.49 },
-  { key: 'instagaming', logo: '/assets/stores/instantgaming.png', initials: 'IG', name: 'Instagaming', url: 'instant-gaming.com', count: '86k', best: 'Hogwarts Legacy', disc: '-89%', price: 6.49 }
-]
-stores = applyStoreCatalog(stores)
+// TODO: stores hardcodeado comentado — datos vienen de la BD
+// let stores = [ ... ]
+// stores = applyStoreCatalog(stores)
+const stores = ref([])
 
-const byDiscount = [...listGames].sort((a, b) => b.discount - a.discount)
-const bySavings = [...listGames].sort((a, b) => (b.was - b.price) - (a.was - a.price))
-const byNewest = [...listGames].slice().reverse()
+const byDiscount   = computed(() => [...listGames.value].sort((a, b) => b.discount - a.discount))
+const bySavings    = computed(() => [...listGames.value].sort((a, b) => (b.was - b.price) - (a.was - a.price)))
+const byNewest     = computed(() => [...listGames.value].slice().reverse())
 
-const topSellers = byDiscount
-const mostSearched = bySavings.slice(0, 180)
-const newReleases = byNewest.slice(0, 180)
-const topRated = byDiscount.filter((g) => g.discount >= 45).slice(0, 180)
+const topSellers   = computed(() => byDiscount.value)
+const mostSearched = computed(() => bySavings.value.slice(0, 180))
+const newReleases  = computed(() => byNewest.value.slice(0, 180))
+const topRated     = computed(() => byDiscount.value.filter((g) => g.discount >= 45).slice(0, 180))
 
-const over70 = listGames.filter((g) => g.discount > 70)
-const mid40to70 = listGames.filter((g) => g.discount <= 70 && g.discount >= 40)
-const under40 = listGames.filter((g) => g.discount < 40)
+const over70       = computed(() => listGames.value.filter((g) => g.discount > 70))
+const mid40to70    = computed(() => listGames.value.filter((g) => g.discount <= 70 && g.discount >= 40))
+const under40      = computed(() => listGames.value.filter((g) => g.discount < 40))
 
-const actionGames = listGames.filter((g) => g.genre === 'Accion')
-const rpgGames = listGames.filter((g) => g.genre === 'RPG')
-const indieGames = listGames.filter((g) => g.genre === 'Indie')
-const horrorGames = listGames.filter((g) => g.genre === 'Terror')
-const sportsGames = listGames.filter((g) => g.genre === 'Deportes' || g.genre === 'Carreras')
-const fpsGames = listGames.filter((g) => g.genre === 'FPS')
+const actionGames  = computed(() => listGames.value.filter((g) => g.genre === 'Accion'))
+const rpgGames     = computed(() => listGames.value.filter((g) => g.genre === 'RPG'))
+const indieGames   = computed(() => listGames.value.filter((g) => g.genre === 'Indie'))
+const horrorGames  = computed(() => listGames.value.filter((g) => g.genre === 'Terror'))
+const sportsGames  = computed(() => listGames.value.filter((g) => g.genre === 'Deportes' || g.genre === 'Carreras'))
+const fpsGames     = computed(() => listGames.value.filter((g) => g.genre === 'FPS'))
 const COLUMN_LIMIT = 7
 const failedStoreLogos = ref({})
 
 function fmt(price) {
-  const normalized = props.currency === 'USD' ? price * USD_RATE : price
+  const num = parseFloat(price) || 0
+  const normalized = props.currency === 'USD' ? num * USD_RATE : num
   const symbol = props.currency === 'USD' ? '$' : '€'
   return `${symbol} ${normalized.toFixed(2)}`
 }
@@ -657,6 +527,24 @@ function useLogo(storeKey) {
 function openGame(game) {
   emit('open-game', game)
 }
+
+onMounted(async () => {
+  try {
+    const juegos = await fetchJuegos()
+    const todos = applyGameCatalog(juegos)
+    listGames.value    = todos
+    featuredGames.value = todos.slice(0, 6)
+    newestGames.value   = todos.slice(-4).reverse()
+  } catch (e) {
+    console.error('Error cargando juegos:', e)
+  }
+  try {
+    const tiendas = await fetchTiendas()
+    stores.value = applyStoreCatalog(tiendas).slice(0, 4)
+  } catch (e) {
+    console.error('Error cargando tiendas:', e)
+  }
+})
 </script>
 
 <template>

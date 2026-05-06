@@ -77,9 +77,9 @@ async function submitAuth() {
 
   loading.value = true
 
-  const result = activeTab.value === 'register'
+  const result = await (activeTab.value === 'register'
     ? registerUser({ name: name.value, email: email.value, password: password.value })
-    : loginUser({ email: email.value, password: password.value })
+    : loginUser({ email: email.value, password: password.value }))
 
   loading.value = false
 

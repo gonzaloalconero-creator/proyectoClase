@@ -1,6 +1,7 @@
 ﻿<script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { applyGameCatalog } from '../services/mockCatalogDb'
+import { fetchJuegos } from '../services/apiService'
 
 const props = defineProps({
   locale: {
@@ -80,72 +81,11 @@ const platformMeta = {
   switch: { icon: '🔴', label: { es: 'Nintendo Switch', en: 'Nintendo Switch' } }
 }
 
-const baseGameCatalog = [
-  { key: 'cyberpunk', name: 'Cyberpunk 2077', img: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1091500/library_600x900.jpg', platform: 'PC Steam', price: 3.99, was: 59.99, discount: 93, tags: ['Accion'] },
-  { key: 'witcher3', name: 'The Witcher 3: Wild Hunt', img: 'https://cdn.cloudflare.steamstatic.com/steam/apps/292030/library_600x900.jpg', platform: 'PC Steam', price: 1.99, was: 29.99, discount: 93, tags: ['RPG'] },
-  { key: 'darksouls3', name: 'Dark Souls III', img: 'https://cdn.cloudflare.steamstatic.com/steam/apps/374320/library_600x900.jpg', platform: 'PC Steam / Xbox', price: 3.49, was: 39.99, discount: 91, tags: ['RPG'] },
-  { key: 'rdr2', name: 'Red Dead Redemption 2', img: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1174180/library_600x900.jpg', platform: 'PC Steam / PS4 / Xbox', price: 5.99, was: 59.99, discount: 90, tags: ['Accion'] },
-  { key: 'starfield', name: 'Starfield', img: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1716740/library_600x900.jpg', platform: 'PC Steam / Xbox', price: 6.99, was: 69.99, discount: 90, tags: ['Accion'] },
-  { key: 'minecraft', name: 'Minecraft', img: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1672970/library_600x900.jpg', platform: 'PC / Xbox / Switch / Mobile', price: 8.49, was: 24.99, discount: 66, tags: ['Indie'] },
-  { key: 'horizonfw', name: 'Horizon Forbidden West', img: 'https://cdn.cloudflare.steamstatic.com/steam/apps/2420110/library_600x900.jpg', platform: 'PS5 / PS4 / PC', price: 18.99, was: 59.99, discount: 68, tags: ['Aventura'] },
-  { key: 'gowr', name: 'God of War Ragnarok', img: 'https://cdn.cloudflare.steamstatic.com/steam/apps/2322010/library_600x900.jpg', platform: 'PS5 / PS4 / PC', price: 22.99, was: 69.99, discount: 67, tags: ['Accion'] },
-  { key: 'bg3', name: "Baldur's Gate 3", img: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1086940/library_600x900.jpg', platform: 'PC Steam / PS5', price: 22.99, was: 59.99, discount: 62, tags: ['RPG'] },
-  { key: 'hades2', name: 'Hades II', img: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1145350/library_600x900.jpg', platform: 'PC Steam', price: 13.49, was: 26.99, discount: 50, tags: ['Indie'] },
-  { key: 'celeste', name: 'Celeste', img: 'https://cdn.cloudflare.steamstatic.com/steam/apps/504230/library_600x900.jpg', platform: 'PC Steam / Switch', price: 1.99, was: 19.99, discount: 90, tags: ['Indie'] },
-  { key: 're4', name: 'Resident Evil 4 Remake', img: 'https://cdn.cloudflare.steamstatic.com/steam/apps/2050650/library_600x900.jpg', platform: 'PC Steam / PS5', price: 12.99, was: 49.99, discount: 74, tags: ['Terror'] },
-  { key: 'forza5', name: 'Forza Horizon 5', img: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1551360/library_600x900.jpg', platform: 'PC / Xbox', price: 31.99, was: 49.99, discount: 36, tags: ['Carreras'] },
-  { key: 'mw3', name: 'Call of Duty: MW3', img: 'https://cdn.cloudflare.steamstatic.com/steam/apps/2519060/library_600x900.jpg', platform: 'PC / PS5 / Xbox', price: 44.99, was: 69.99, discount: 36, tags: ['FPS'] },
-  { key: 'fifa24', name: 'EA Sports FC 24', img: 'https://cdn.cloudflare.steamstatic.com/steam/apps/2195250/library_600x900.jpg', platform: 'PC / PS5 / Xbox', price: 25.99, was: 39.99, discount: 35, tags: ['Deportes'] },
-  { key: 'alanwake2', name: 'Alan Wake 2', img: 'https://images.unsplash.com/photo-1552820728-8b83bb6b773f?auto=format&fit=crop&w=900&q=80', platform: 'Epic Games / PS5 / Xbox', price: 23.99, was: 49.99, discount: 52, tags: ['Terror'] },
-  { key: 'fortnite', name: 'Fortnite', img: 'https://images.unsplash.com/photo-1545239351-1141bd82e8a6?auto=format&fit=crop&w=900&q=80', platform: 'Epic Games / PS5 / Xbox / Switch / PC', price: 4.99, was: 19.99, discount: 75, tags: ['Accion'] },
-  { key: 'rocketleague', name: 'Rocket League', img: 'https://images.unsplash.com/photo-1493238792000-8113da705763?auto=format&fit=crop&w=900&q=80', platform: 'Epic Games / PS5 / Xbox / Switch / PC', price: 2.99, was: 19.99, discount: 85, tags: ['Deportes'] },
-  { key: 'ffxvi', name: 'Final Fantasy XVI', img: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=900&q=80', platform: 'PS5', price: 39.99, was: 79.99, discount: 50, tags: ['RPG'] },
-  { key: 'spiderman2', name: "Marvel's Spider-Man 2", img: 'https://images.unsplash.com/photo-1511882150382-421056c89033?auto=format&fit=crop&w=900&q=80', platform: 'PS5', price: 49.99, was: 79.99, discount: 38, tags: ['Accion'] },
-  { key: 'haloinfinite', name: 'Halo Infinite', img: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=900&q=80', platform: 'Xbox / PC', price: 14.99, was: 59.99, discount: 75, tags: ['FPS'] },
-  { key: 'forzamotorsport', name: 'Forza Motorsport', img: 'https://images.unsplash.com/photo-1635805737707-575885ab0820?auto=format&fit=crop&w=900&q=80', platform: 'Xbox / PC', price: 29.99, was: 69.99, discount: 57, tags: ['Carreras'] },
-  { key: 'zeldatotk', name: 'Zelda: Tears of the Kingdom', img: 'https://images.unsplash.com/photo-1545239351-1141bd82e8a6?auto=format&fit=crop&w=900&q=80', platform: 'Switch', price: 49.99, was: 69.99, discount: 29, tags: ['Aventura'] },
-  { key: 'mariowonder', name: 'Super Mario Bros. Wonder', img: 'https://images.unsplash.com/photo-1493238792000-8113da705763?auto=format&fit=crop&w=900&q=80', platform: 'Switch', price: 39.99, was: 59.99, discount: 33, tags: ['Aventura'] }
-]
+// TODO: baseGameCatalog y createSyntheticSearchGames comentados — datos vienen de la BD
+// const baseGameCatalog = [ ... ]
+// function createSyntheticSearchGames() { ... }
 
-function createSyntheticSearchGames() {
-  const genres = ['Accion', 'RPG', 'Aventura', 'FPS', 'Indie', 'Deportes', 'Carreras', 'Terror']
-
-  const platforms = [
-    { key: 'steam', label: 'PC Steam', title: 'Steam Arena', seed: 3 },
-    { key: 'epic', label: 'Epic Games / PC', title: 'Epic Legends', seed: 7 },
-    { key: 'ps5', label: 'PS5', title: 'PlayStation Next', seed: 11 },
-    { key: 'ps4', label: 'PS4', title: 'PlayStation Classic', seed: 13 },
-    { key: 'xbox', label: 'Xbox / PC', title: 'Xbox Impact', seed: 17 },
-    { key: 'switch', label: 'Switch', title: 'Switch Worlds', seed: 19 }
-  ]
-
-  const generated = []
-
-  platforms.forEach((plat) => {
-    for (let i = 1; i <= 100; i += 1) {
-      const price = Number((5 + ((i * 7 + plat.seed) % 55) + (i % 3) * 0.49).toFixed(2))
-      const was = Number((price * (1.25 + ((i + plat.seed) % 5) * 0.12)).toFixed(2))
-      const discount = Math.max(10, Math.round((1 - price / was) * 100))
-      const genre = genres[(i + plat.seed) % genres.length]
-      const img = `https://picsum.photos/seed/${plat.key}-search-${String(i).padStart(3, '0')}/600/900`
-
-      generated.push({
-        key: `${plat.key}-extra-${String(i).padStart(3, '0')}`,
-        name: `${plat.title} ${String(i).padStart(3, '0')}`,
-        img,
-        platform: plat.label,
-        price,
-        was,
-        discount,
-        tags: [genre]
-      })
-    }
-  })
-
-  return generated
-}
-
-const gameCatalog = applyGameCatalog([...baseGameCatalog, ...createSyntheticSearchGames()])
+const gameCatalog = ref([])
 
 const searchWrapRef = ref(null)
 const userMenuRef = ref(null)
@@ -210,7 +150,7 @@ function closeSearchDropdown() {
 
 function performSearch(query) {
   const q = query.toLowerCase()
-  const matches = gameCatalog.filter((g) => g.name.toLowerCase().includes(q))
+  const matches = gameCatalog.value.filter((g) => g.name.toLowerCase().includes(q))
 
   if (!matches.length) {
     availableResults.value = []
@@ -353,10 +293,15 @@ function handleMobileMenuClick(e) {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   document.addEventListener('click', handleOutsideClick)
-  // Cierra el menú móvil al navegar
   window.addEventListener('hashchange', closeMobileMenu)
+  try {
+    const juegos = await fetchJuegos()
+    gameCatalog.value = applyGameCatalog(juegos)
+  } catch (e) {
+    console.error('Error cargando catálogo:', e)
+  }
 })
 
 onBeforeUnmount(() => {
