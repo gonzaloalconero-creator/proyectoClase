@@ -1,8 +1,8 @@
 // ============================================================
-//  scrapers/eneba.js — v5 import correcto
+//  scrapers/eneba.js
 // ============================================================
 
-import playwright from 'playwright';
+import playwright from 'rebrowser-playwright';
 
 const { chromium } = playwright;
 const BASE_URL = 'https://www.eneba.com';
@@ -36,55 +36,38 @@ export async function scrapeEneba(gameName, platform = 'steam') {
 
     await page.route('**/*.{png,jpg,jpeg,gif,webp,svg,woff,woff2,ttf}', r => r.abort());
 
-    const url = `${BASE_URL}/es/store/all?text=${encodeURIComponent(gameName)}`;
-    console.log(`    [Eneba] Cargando página...`);
+    const searchUrl = `${BASE_URL}/es/store/all?text=${encodeURIComponent(gameName)}`;
+    await page.goto(searchUrl, { waitUntil: 'networkidle', timeout: 45000 });
 
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 35000 });
-    await page.waitForTimeout(4000);
+    try {
+      await page.waitForSelector('button[aria-label^="Añadir al carrito"]', { timeout: 20000 });
+    } catch { /* productos no cargaron a tiempo */ }
 
-    const products = await page.evaluate(() => {
+    const products = await page.evaluate((baseUrl) => {
       const results = [];
-      const selectors = [
-        '[data-qa="product-card"]',
-        '[class*="ProductCard"]:not([class*="Inner"])',
-        '[class*="product-card"]',
-        'article',
-        'li[class*="product"]',
-      ];
+      const buttons = document.querySelectorAll('button[aria-label^="Añadir al carrito"]');
 
-      let cards = [];
-      for (const sel of selectors) {
-        const found = document.querySelectorAll(sel);
-        if (found.length >= 2) { cards = Array.from(found); break; }
-      }
+      for (const btn of buttons) {
+        const label = btn.getAttribute('aria-label') || '';
+        const name = label.replace('Añadir al carrito - ', '').trim();
 
-      if (!cards.length) {
-        cards = Array.from(document.querySelectorAll('article, li, div[class*="card"]'))
-          .filter(el => (el.textContent || '').includes('€'));
-      }
+        const container = btn.closest('div');
+        const priceEl = container?.querySelector('.L5ErLT');
+        const priceText = priceEl?.textContent?.trim() || '';
 
-      for (const card of cards) {
-        let name = '';
-        for (const sel of ['[data-qa="product-name"]','[class*="name"]','[class*="title"]','h3','h2','h4']) {
-          const el = card.querySelector(sel);
-          if (el?.textContent?.trim().length > 3) { name = el.textContent.trim(); break; }
-        }
-
-        let priceText = '';
-        for (const sel of ['[data-qa="product-price"]','[class*="price"]','[class*="Price"]','[class*="amount"]']) {
-          for (const el of card.querySelectorAll(sel)) {
-            const t = el.textContent?.trim() || '';
-            if (/[\d,.]+/.test(t) && t.includes('€')) { priceText = t; break; }
-          }
-          if (priceText) break;
+        let href = '';
+        const linkEl = container?.closest('a[href]') || container?.querySelector('a[href]');
+        if (linkEl) {
+          const raw = linkEl.getAttribute('href');
+          href = raw.startsWith('http') ? raw : baseUrl + raw;
         }
 
         if (name && priceText) {
-          results.push({ name, price: priceText, fullText: (card.textContent || '').slice(0, 300) });
+          results.push({ name, price: priceText, fullText: name.toLowerCase(), url: href });
         }
       }
       return results;
-    });
+    }, BASE_URL);
 
     await browser.close();
     browser = null;
@@ -104,8 +87,14 @@ export async function scrapeEneba(gameName, platform = 'steam') {
     gameName.toLowerCase().split(' ').filter(w => w.length > 3).some(w => k.includes(w))
   );
   if (key) {
-    console.log(`    [Eneba]   Sin resultado real — usando precio de referencia`);
-    return { ...DEMO_PRICES[key], stock: 'ok', type: 'code', _source: 'demo' };
+    console.log(`    [Eneba] Sin resultado real — usando precio de referencia`);
+    return {
+      ...DEMO_PRICES[key],
+      stock: 'ok',
+      type: 'code',
+      url: `${BASE_URL}/es/store/all?text=${encodeURIComponent(gameName)}`,
+      _source: 'demo',
+    };
   }
 
   return null;
@@ -122,8 +111,8 @@ function findBestMatch(products, gameName, platform) {
     const price = parsePrice(p.price);
     if (!price) continue;
     const stock  = full.includes('out of stock') ? 'out' : full.includes('low stock') ? 'low' : 'ok';
-    const region = full.includes('europe') || full.includes(' eu ') ? 'Europa' : 'Global';
-    return { price, region, stock, type: 'code' };
+    const region = rawName.includes('global') ? 'Global' : rawName.includes('europe') || rawName.includes(' eu ') ? 'Europa' : 'Global';
+    return { price, region, stock, type: 'code', url: p.url };
   }
   return null;
 }
@@ -141,7 +130,7 @@ function checkPlatform(text, platform) {
 
 function parsePrice(raw) {
   if (!raw) return null;
-  const clean = raw.replace(/[€$£\s]/g, '').replace(',', '.');
+  const clean = raw.replace(/[€$£\s\u00a0]/g, '').replace(',', '.');
   const parts = clean.split('.');
   const norm  = parts.length > 2 ? parts.slice(0,-1).join('') + '.' + parts[parts.length-1] : clean;
   const num   = parseFloat(norm);
