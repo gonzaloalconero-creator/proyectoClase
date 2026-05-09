@@ -4,7 +4,6 @@
 
 import mysql from 'mysql2/promise';
 
-// ── Configura aquí tus credenciales ─────────────────────────
 const pool = mysql.createPool({
   host:     process.env.DB_HOST     || 'localhost',
   user:     process.env.DB_USER     || 'root',
@@ -14,14 +13,12 @@ const pool = mysql.createPool({
   connectionLimit: 5,
 });
 
-  export async function closePool() {
+export async function closePool() {
   await pool.end();
 }
 
 /**
  * Actualiza (o inserta) una oferta en la BD.
- * Llama al stored procedure sp_actualizar_precio si la oferta existe,
- * o hace un INSERT si es nueva.
  *
  * @param {Object} opts
  * @param {string} opts.slug       - Slug del juego (ej: 'cyberpunk')
@@ -31,21 +28,20 @@ const pool = mysql.createPool({
  * @param {string} opts.region     - Región (ej: 'Global', 'Europa')
  * @param {string} opts.stock      - Stock: 'ok' | 'low' | 'out'
  * @param {string} opts.tipo       - Tipo: 'code' | 'account'
+ * @param {string} opts.url        - URL del producto en la tienda
  */
-export async function updateOfferInDB({ slug, storeCode, platform, price, region, stock, tipo }) {
+export async function updateOfferInDB({ slug, storeCode, platform, price, region, stock, tipo, url }) {
   const conn = await pool.getConnection();
   try {
-    // Buscar IDs de juego, tienda y plataforma
-    const [[game]]  = await conn.query('SELECT id FROM juegos     WHERE slug   = ?', [slug]);
-    const [[store]] = await conn.query('SELECT id FROM tiendas    WHERE codigo = ?', [storeCode]);
+    const [[game]]  = await conn.query('SELECT id FROM juegos      WHERE slug   = ?', [slug]);
+    const [[store]] = await conn.query('SELECT id FROM tiendas     WHERE codigo = ?', [storeCode]);
     const [[plat]]  = await conn.query('SELECT id FROM plataformas WHERE codigo = ?', [platform]);
 
     if (!game || !store || !plat) {
-      console.warn(`     Entidad no encontrada en BD: slug=${slug} store=${storeCode} plat=${platform}`);
+      console.warn(`    Entidad no encontrada en BD: slug=${slug} store=${storeCode} plat=${platform}`);
       return;
     }
 
-    // ¿Existe ya esta oferta?
     const [[existing]] = await conn.query(
       `SELECT id, precio FROM ofertas
        WHERE juego_id = ? AND tienda_id = ? AND plataforma_id = ? AND activa = 1
@@ -54,20 +50,21 @@ export async function updateOfferInDB({ slug, storeCode, platform, price, region
     );
 
     if (existing) {
-      // Actualizar precio usando el stored procedure (que guarda el historial automáticamente)
+      // Actualizar precio usando el stored procedure (guarda historial automáticamente)
       await conn.query('CALL sp_actualizar_precio(?, ?)', [existing.id, price]);
-    } else {
-      // Insertar nueva oferta
+      // Actualizar también la URL del producto
       await conn.query(
-        `INSERT INTO ofertas (juego_id, tienda_id, plataforma_id, tipo, region, stock, precio)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [game.id, store.id, plat.id, tipo, region, stock, price]
+        'UPDATE ofertas SET url_producto = ? WHERE id = ?',
+        [url || null, existing.id]
+      );
+    } else {
+      await conn.query(
+        `INSERT INTO ofertas (juego_id, tienda_id, plataforma_id, tipo, region, stock, url_producto, precio)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [game.id, store.id, plat.id, tipo, region, stock, url || null, price]
       );
     }
   } finally {
     conn.release();
   }
-
-
-  
 }
