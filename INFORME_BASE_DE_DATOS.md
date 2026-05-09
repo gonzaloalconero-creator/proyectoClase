@@ -428,7 +428,7 @@ La conexion se configura mediante variables de entorno en archivos `.env`:
 
 | Variable | Valor (produccion) | Descripcion |
 |---|---|---|
-| `DB_HOST` | `54.234.227.200` | IP del servidor AWS RDS |
+| `DB_HOST` | `52.55.4.142` | IP del servidor AWS RDS |
 | `DB_USER` | `codekeys_user` | Usuario de MySQL |
 | `DB_PASS` | `Codekeys` | Contrasena |
 | `DB_NAME` | `codekeys` | Nombre de la base de datos |
