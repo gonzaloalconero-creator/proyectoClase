@@ -273,7 +273,7 @@ function storeTotalJuegos(storeKey) {
   if (!data) return '—'
   return data.totalJuegos.toLocaleString('es-ES')
 }
-// ── Conteos por plataforma ───────────────────────────────────
+
 function calcPlatformCounts(juegos) {
   const counts = { steam: 0, epic: 0, ps5: 0, ps4: 0, xbox: 0, switch: 0 }
   juegos.forEach(g => {
@@ -422,7 +422,8 @@ onMounted(async () => {
       <a href="#">{{ t('seeMore') }}</a>
     </div>
 
-    <div class="multi-col col4 adaptive-cols">
+    <!-- Por popularidad: 4 cols → 2 cols en tablet → 1 col en móvil -->
+    <div class="multi-col col4">
       <div v-if="hasVisibleGames(topSellers)" class="list-col">
         <div class="list-col-head">
           <span class="title">{{ t('bestSellers') }}</span>
@@ -464,8 +465,7 @@ onMounted(async () => {
             <span class="ci-disc">{{ discountBadge(game.discount) }}</span>
           </div>
         </div>
-        <button class="list-col-more" @click="openCategoryPage('mostSearched', mostSearched)">{{ t('seeMore')
-          }}</button>
+        <button class="list-col-more" @click="openCategoryPage('mostSearched', mostSearched)">{{ t('seeMore') }}</button>
       </div>
 
       <div v-if="hasVisibleGames(newReleases)" class="list-col">
@@ -518,7 +518,7 @@ onMounted(async () => {
       <a href="#">{{ t('seeAll') }}</a>
     </div>
 
-    <div class="multi-col col3 adaptive-cols">
+    <div class="multi-col col3">
       <div v-if="hasVisibleGames(over70)" class="list-col">
         <div class="list-col-head">
           <span class="title">{{ t('over70') }}</span>
@@ -591,7 +591,7 @@ onMounted(async () => {
       <a href="#">{{ t('explore') }}</a>
     </div>
 
-    <div class="multi-col col3 adaptive-cols" style="margin-bottom:10px;">
+    <div class="multi-col col3" style="margin-bottom:10px;">
       <div v-if="hasVisibleGames(actionGames)" class="list-col">
         <div class="list-col-head">
           <span class="title">{{ t('action') }}</span>
@@ -659,7 +659,7 @@ onMounted(async () => {
       </div>
     </div>
 
-    <div class="multi-col col3 adaptive-cols">
+    <div class="multi-col col3">
       <div v-if="hasVisibleGames(horrorGames)" class="list-col">
         <div class="list-col-head">
           <span class="title">{{ t('horror') }}</span>
@@ -727,6 +727,7 @@ onMounted(async () => {
       </div>
     </div>
 
+    <!-- ── PRÓXIMOS LANZAMIENTOS ──────────────────────────────────────── -->
     <div class="sec-head" id="secUpcoming" style="margin-top:28px;">
       <h2>{{ t('upcoming') }}</h2>
       <a href="#" @click.prevent="openUpcomingPage">{{ t('seeAllGames') }}</a>
@@ -752,6 +753,7 @@ onMounted(async () => {
       </div>
     </div>
 
+    <!-- ── TIENDAS ─────────────────────────────────────────────────────── -->
     <div class="sec-head" id="secTiendas" style="margin-top:28px;">
       <h2>{{ t('comparedStores') }}</h2>
     </div>
@@ -799,9 +801,8 @@ onMounted(async () => {
 .hero-slider {
   position: relative;
   width: 100%;
-  /* aspect-ratio mantiene proporciones tipo banner de juego (aprox 4:1) */
   aspect-ratio: 4 / 1;
-  min-height: 180px;
+  min-height: 160px;
   max-height: 320px;
   overflow: hidden;
   border-radius: var(--radius-lg);
@@ -833,15 +834,13 @@ onMounted(async () => {
 .hs-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(to right, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.1) 60%, transparent 100%);
+  background: linear-gradient(to right, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.1) 60%, transparent 100%);
   display: flex;
   align-items: flex-end;
-  padding: 24px;
+  padding: 20px;
 }
 
-.hs-info {
-  max-width: 55%;
-}
+.hs-info { max-width: 60%; }
 
 .hs-platform {
   font-size: 11px;
@@ -850,44 +849,45 @@ onMounted(async () => {
   text-transform: uppercase;
   letter-spacing: 1px;
   display: block;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .hs-name {
   font-family: var(--font-display);
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 900;
   color: #fff;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
-  margin-bottom: 8px;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+  margin-bottom: 6px;
   line-height: 1.1;
 }
 
 .hs-prices {
   display: flex;
   align-items: baseline;
-  gap: 10px;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .hs-price {
   font-family: var(--font-display);
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 900;
   color: var(--green);
 }
 
 .hs-was {
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+  color: rgba(255,255,255,0.5);
   text-decoration: line-through;
 }
 
 .hs-disc {
   background: #dc2626;
   color: #fff;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
-  padding: 2px 8px;
+  padding: 2px 6px;
   border-radius: 4px;
 }
 
@@ -895,13 +895,13 @@ onMounted(async () => {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0,0,0,0.5);
   color: #fff;
   border: none;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  font-size: 14px;
+  font-size: 13px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -909,41 +909,64 @@ onMounted(async () => {
   transition: background 0.2s;
   z-index: 2;
 }
-
-.hs-btn:hover {
-  background: rgba(0, 0, 0, 0.8);
-}
-
-.hs-prev {
-  left: 10px;
-}
-
-.hs-next {
-  right: 10px;
-}
+.hs-btn:hover { background: rgba(0,0,0,0.8); }
+.hs-prev { left: 8px; }
+.hs-next { right: 8px; }
 
 .hs-dots {
   position: absolute;
-  bottom: 12px;
-  right: 16px;
+  bottom: 10px;
+  right: 14px;
   display: flex;
-  gap: 6px;
+  gap: 5px;
   z-index: 2;
 }
 
 .hs-dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.4);
+  background: rgba(255,255,255,0.4);
   cursor: pointer;
   transition: background 0.2s;
 }
+.hs-dot.active { background: var(--accent); }
 
-.hs-dot.active {
-  background: var(--accent);
+/* ── Multi-col grids responsivos ──────────────────────────── */
+/* Se sobreescriben los de style.css global para asegurar que funcionen */
+.multi-col {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 20px;
 }
 
+.multi-col.col4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+.multi-col.col3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+.multi-col.col2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+/* ── Upcoming grid ───────────────────────────────────────────── */
+.upcoming-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+/* ── Stores grid ───────────────────────────────────────────── */
+.stores-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 28px;
+}
+
+/* ── Store card internals ─────────────────────────────────── */
 .store-card-head {
   display: flex;
   align-items: center;
@@ -994,5 +1017,69 @@ onMounted(async () => {
   font-weight: 700;
   color: var(--text-faint);
   white-space: nowrap;
+}
+
+/* ══════════════════════════════════════════════════
+   RESPONSIVE
+══════════════════════════════════════════════════ */
+
+/* ── 1100px ── */
+@media (max-width: 1100px) {
+  .multi-col.col4 { grid-template-columns: repeat(2, 1fr); }
+  .multi-col.col3 { grid-template-columns: repeat(3, 1fr); }
+  .upcoming-grid  { grid-template-columns: repeat(3, 1fr); }
+  .stores-grid    { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* ── 768px ── */
+@media (max-width: 768px) {
+  .multi-col.col4 { grid-template-columns: repeat(2, 1fr); }
+  .multi-col.col3 { grid-template-columns: repeat(2, 1fr); }
+  .upcoming-grid  { grid-template-columns: repeat(2, 1fr); }
+  .stores-grid    { grid-template-columns: repeat(2, 1fr); }
+
+  .hs-name { font-size: 17px; }
+  .hs-price { font-size: 16px; }
+}
+
+/* ── 480px ── */
+@media (max-width: 480px) {
+  /* 1 sola columna para todas las listas */
+  .multi-col.col4,
+  .multi-col.col3,
+  .multi-col.col2 {
+    grid-template-columns: 1fr;
+  }
+
+  /* Upcoming: 2 columnas en móvil caben bien */
+  .upcoming-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  /* Tiendas: 1 columna en móvil */
+  .stores-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Slider más compacto */
+  .hero-slider {
+    aspect-ratio: 16 / 7;
+    min-height: 120px;
+  }
+  .hs-overlay { padding: 12px; }
+  .hs-info { max-width: 75%; }
+  .hs-name { font-size: 14px; margin-bottom: 4px; }
+  .hs-price { font-size: 14px; }
+  .hs-was { display: none; }
+  .hs-platform { font-size: 9px; }
+  .hs-btn { width: 26px; height: 26px; font-size: 11px; }
+}
+
+/* ── 360px ── */
+@media (max-width: 360px) {
+  .upcoming-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
