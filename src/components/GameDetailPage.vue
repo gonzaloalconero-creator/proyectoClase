@@ -13,12 +13,17 @@
         <p class="game-detail-desc">{{ shortDescription }}</p>
       </div>
     </div>
+
     <div class="store-prices-box">
       <button class="back-btn" @click="$emit('back')">← Volver</button>
       <h3>Precios en tiendas</h3>
-      <GameOffersList :offers="storeOffers" />
+      <GameOffersList
+        :offers="storeOffers"
+        :currency="currency"
+        :game-name="game.name"
+      />
     </div>
-    <!-- El bloque de precios ya incluye el botón de volver -->
+
     <div class="price-chart-box">
       <h3>Evolución de precios este mes</h3>
       <canvas ref="chartRef" width="400" height="200"></canvas>
@@ -34,7 +39,8 @@ import { getPriceHistory } from '../services/priceHistory'
 import { fetchOfertas, fetchPrecioHistorial } from '../services/apiService'
 
 const props = defineProps({
-  game: { type: Object, required: true }
+  game:     { type: Object, required: true },
+  currency: { type: String, default: 'EUR' }
 })
 
 const isFavorite = ref(false)
@@ -62,17 +68,10 @@ watch(() => props.game.key, loadFavorite, { immediate: true })
 
 const chartRef = ref(null)
 let chartInstance = null
-
 const priceHistory = ref([])
-
-// TODO: keyStores y storeOffers simulados comentados — datos vienen de la BD
-// const keyStores = [ ... ]
-// const storeOffers = computed(() => { ... generación simulada ... })
-
 const storeOffers = ref([])
 
 const shortDescription = computed(() => {
-  // Simulación de descripción resumida
   return props.game?.desc || 'Sin descripción disponible.'
 })
 
@@ -84,7 +83,7 @@ function renderChart() {
     label: store.storeName,
     data: store.prices.map(p => p.price),
     fill: false,
-    borderColor: '#' + Math.floor(Math.random()*16777215).toString(16),
+    borderColor: '#' + Math.floor(Math.random() * 16777215).toString(16),
     tension: 0.2
   }))
   chartInstance = new Chart(chartRef.value, {
@@ -117,7 +116,6 @@ async function loadGameData(slug) {
 }
 
 watch(() => props.game, (g) => { if (g) loadGameData(g.key) })
-
 onMounted(() => { if (props.game) loadGameData(props.game.key) })
 </script>
 
@@ -143,81 +141,16 @@ onMounted(() => { if (props.game) loadGameData(props.game.key) })
   transition: background 0.15s;
   z-index: 2;
 }
-.fav-btn:hover {
-  background: #ffe4e1;
-}
-.heart {
-  font-size: 1.7em;
-  color: #f97316;
-  transition: color 0.15s;
-}
-.heart.filled {
-  color: #e11d48;
-}
-@media (max-width: 600px) {
-  .game-detail-page {
-    max-width: 100vw;
-    margin: 0;
-    padding: 0 0 24px 0;
-  }
-  .game-detail-card {
-    flex-direction: column;
-    gap: 18px;
-    padding: 18px 8px 16px 8px;
-    border-radius: var(--radius-md);
-    margin-bottom: 18px;
-    box-shadow: 0 2px 12px 0 rgba(0,0,0,0.10);
-  }
-  .game-detail-img {
-    width: 100%;
-    max-width: 320px;
-    height: auto;
-    min-height: 180px;
-    margin: 0 auto;
-    display: block;
-    border-radius: var(--radius-md);
-  }
-  .game-detail-info {
-    gap: 8px;
-    padding: 0 2px;
-  }
-  .game-detail-title {
-    font-size: 1.3em;
-    text-align: center;
-    margin-bottom: 6px;
-  }
-  .game-detail-desc {
-    font-size: 1em;
-    text-align: center;
-    margin-bottom: 4px;
-  }
-  .store-prices-box, .price-chart-box {
-    padding: 12px 4vw 10px 4vw;
-    margin-bottom: 14px;
-    border-radius: var(--radius-sm);
-  }
-  .store-prices-box h3, .price-chart-box h3 {
-    font-size: 1em;
-    margin-bottom: 8px;
-    text-align: center;
-  }
-  .back-btn {
-    width: 100%;
-    padding: 12px 0;
-    font-size: 1em;
-    margin-top: 14px;
-    border-radius: var(--radius-sm);
-  }
-}
-/* --- Rediseño para encajar con la web principal --- */
+.fav-btn:hover { background: #ffe4e1; }
+.heart { font-size: 1.7em; color: #f97316; transition: color 0.15s; }
+.heart.filled { color: #e11d48; }
+
 .game-detail-page {
   width: 100vw;
   max-width: 100vw;
   margin: 0;
   padding: 0 0 40px 0;
   box-sizing: border-box;
-  border-radius: 0;
-  box-shadow: none;
 }
 
 .game-detail-card {
@@ -225,7 +158,7 @@ onMounted(() => { if (props.game) loadGameData(props.game.key) })
   border: 1.5px solid var(--border-medium);
   border-radius: var(--radius-lg);
   box-shadow: 0 4px 32px 0 rgba(0,0,0,0.13);
-  padding: 36px 36px 28px 36px;
+  padding: 36px;
   display: flex;
   gap: 32px;
   align-items: center;
@@ -234,23 +167,6 @@ onMounted(() => { if (props.game) loadGameData(props.game.key) })
   max-width: 900px;
   margin-left: auto;
   margin-right: auto;
-}
-@media (max-width: 900px) {
-  .game-detail-card {
-    flex-direction: column;
-    align-items: center;
-    padding: 24px 8vw 18px 8vw;
-    gap: 18px;
-  }
-  .game-detail-img-wrap {
-    margin-bottom: 10px;
-  }
-}
-@media (max-width: 800px) {
-  .game-detail-card {
-    padding-right: 18px;
-    padding-left: 12px;
-  }
 }
 
 .game-detail-img {
@@ -281,10 +197,10 @@ onMounted(() => { if (props.game) loadGameData(props.game.key) })
   color: var(--text-secondary);
   font-size: 1.13em;
   line-height: 1.6;
-  margin-bottom: 8px;
 }
 
-.store-prices-box, .price-chart-box {
+.store-prices-box,
+.price-chart-box {
   background: var(--bg-elevated);
   border: 1px solid var(--border-faint);
   border-radius: var(--radius-md);
@@ -295,27 +211,15 @@ onMounted(() => { if (props.game) loadGameData(props.game.key) })
   margin-left: auto;
   margin-right: auto;
 }
-@media (max-width: 900px) {
-  .store-prices-box, .price-chart-box {
-    padding-left: 8vw;
-    padding-right: 8vw;
-  }
-}
-.store-prices-box h3, .price-chart-box h3 {
+.store-prices-box h3,
+.price-chart-box h3 {
   color: var(--accent);
   font-size: 1.18em;
   margin-bottom: 14px;
   font-weight: 700;
-  letter-spacing: 0.2px;
 }
 
-.price-chart-box {
-  padding-bottom: 24px;
-}
-/* Botón de volver flotante en la esquina superior izquierda del bloque de precios */
-.store-prices-box {
-  position: relative;
-}
+.store-prices-box { position: relative; }
 .back-btn {
   position: absolute;
   top: 14px;
@@ -328,29 +232,18 @@ onMounted(() => { if (props.game) loadGameData(props.game.key) })
   font-size: 1em;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 2px 8px 0 rgba(0,0,0,0.08);
-  transition: background var(--transition), color var(--transition);
+  transition: background var(--transition);
   z-index: 10;
 }
-.back-btn:hover {
-  background: var(--accent-hover);
-  color: #fff;
+.back-btn:hover { background: var(--accent-hover); }
+
+@media (max-width: 900px) {
+  .game-detail-card { flex-direction: column; padding: 24px 8vw; gap: 18px; }
+  .store-prices-box, .price-chart-box { padding-left: 8vw; padding-right: 8vw; }
 }
 @media (max-width: 600px) {
-  .back-btn {
-    top: 6px;
-    right: 16px;
-    left: auto;
-    padding: 6px 16px;
-    font-size: 0.95em;
-  }
-}
-@media (max-width: 600px) {
-  .back-btn {
-    top: 10px;
-    left: 10px;
-    padding: 8px 18px;
-    font-size: 1em;
-  }
+  .game-detail-img { width: 100%; max-width: 320px; height: auto; min-height: 180px; }
+  .game-detail-title { font-size: 1.3em; text-align: center; }
+  .back-btn { top: 10px; right: 16px; padding: 6px 16px; font-size: 0.95em; }
 }
 </style>

@@ -133,7 +133,49 @@ app.get('/api/tiendas', async (_req, res) => {
   }
 })
 
+// ── Conteo de juegos por tienda ──────────────────────────────
+app.get('/api/tiendas/conteo', async (_req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT
+        t.codigo AS storeKey,
+        COUNT(DISTINCT o.juego_id) AS totalJuegos,
+        MIN(o.precio) AS mejorPrecio
+      FROM tiendas t
+      LEFT JOIN ofertas o ON o.tienda_id = t.id AND o.activa = 1 AND o.precio > 0
+      WHERE t.activa = 1
+      GROUP BY t.id, t.codigo
+    `)
+    res.json(rows)
+  } catch (err) {
+    console.error('/api/tiendas/conteo:', err.message)
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// ── Ahorro medio por tienda ──────────────────────────────────
+app.get('/api/tiendas/ahorro', async (_req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT
+        t.codigo AS storeKey,
+        ROUND(AVG(j.descuento), 1) AS ahorroMedio,
+        COUNT(DISTINCT o.juego_id) AS totalJuegos
+      FROM tiendas t
+      LEFT JOIN ofertas o ON o.tienda_id = t.id AND o.activa = 1 AND o.precio > 0
+      LEFT JOIN juegos j ON j.id = o.juego_id AND j.activo = 1
+      WHERE t.activa = 1
+      GROUP BY t.id, t.codigo
+    `)
+    res.json(rows)
+  } catch (err) {
+    console.error('/api/tiendas/ahorro:', err.message)
+    res.status(500).json({ error: err.message })
+  }
+})
+
 // ── Ofertas por juego ────────────────────────────────────────
+// CAMBIO: añadido t.url_base AS storeUrl para poder enlazar a la tienda
 app.get('/api/ofertas/:slug', async (req, res) => {
   try {
     const [rows] = await pool.query(`
@@ -141,6 +183,7 @@ app.get('/api/ofertas/:slug', async (req, res) => {
         t.codigo   AS storeKey,
         t.nombre   AS storeName,
         t.logo_url AS storeLogo,
+        t.url_base AS storeUrl,
         t.rating,
         t.votos    AS votes,
         p.codigo   AS platformKey,

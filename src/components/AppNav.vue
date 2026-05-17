@@ -4,26 +4,14 @@ import { applyGameCatalog } from '../services/mockCatalogDb'
 import { fetchJuegos } from '../services/apiService'
 
 const props = defineProps({
-  locale: {
-    type: String,
-    default: 'es'
-  },
-  selectedPlatform: {
-    type: String,
-    default: 'all'
-  },
-  currency: {
-    type: String,
-    default: 'EUR'
-  },
-  currentUser: {
-    type: Object,
-    default: null
-  }
+  locale: { type: String, default: 'es' },
+  selectedPlatform: { type: String, default: 'all' },
+  currency: { type: String, default: 'EUR' },
+  currentUser: { type: Object, default: null }
 })
 
+const emit = defineEmits(['open-auth', 'open-game', 'logout', 'open-admin', 'open-history', 'open-blog', 'go-home', 'go-section'])
 
-const emit = defineEmits(['open-auth', 'open-game', 'logout', 'open-admin', 'open-history', 'open-blog'])
 const isMobileMenuOpen = ref(false)
 
 const labels = {
@@ -81,12 +69,7 @@ const platformMeta = {
   switch: { icon: '🔴', label: { es: 'Nintendo Switch', en: 'Nintendo Switch' } }
 }
 
-// TODO: baseGameCatalog y createSyntheticSearchGames comentados — datos vienen de la BD
-// const baseGameCatalog = [ ... ]
-// function createSyntheticSearchGames() { ... }
-
 const gameCatalog = ref([])
-
 const searchWrapRef = ref(null)
 const userMenuRef = ref(null)
 const searchQuery = ref('')
@@ -225,13 +208,8 @@ const noResults = computed(() => {
   return !availableResults.value.length && !unavailableResults.value.length && !!searchQuery.value.trim()
 })
 
-function openLogin() {
-  emit('open-auth', 'login')
-}
-
-function openRegister() {
-  emit('open-auth', 'register')
-}
+function openLogin() { emit('open-auth', 'login') }
+function openRegister() { emit('open-auth', 'register') }
 
 const userInitials = computed(() => {
   if (!props.currentUser?.name) return 'U'
@@ -241,13 +219,8 @@ const userInitials = computed(() => {
 
 const isAdmin = computed(() => props.currentUser?.role === 'admin')
 
-function toggleUserMenu() {
-  isUserMenuOpen.value = !isUserMenuOpen.value
-}
-
-function closeUserMenu() {
-  isUserMenuOpen.value = false
-}
+function toggleUserMenu() { isUserMenuOpen.value = !isUserMenuOpen.value }
+function closeUserMenu() { isUserMenuOpen.value = false }
 
 function doLogout() {
   closeUserMenu()
@@ -264,33 +237,34 @@ function openHistoryPage() {
   emit('open-history')
 }
 
-function handleOutsideClick(e) {
-  const wrap = searchWrapRef.value
-  if (wrap && !wrap.contains(e.target)) {
-    closeSearchDropdown()
-  }
-
-  const userWrap = userMenuRef.value
-  if (userWrap && !userWrap.contains(e.target)) {
-    closeUserMenu()
-  }
+// Navegación a secciones: cierra páginas y hace scroll/hash
+function goToSection(hash) {
+  emit('go-section', hash)
+  closeMobileMenu()
+  // Pequeño delay para que Vue actualice el DOM antes del scroll
+  setTimeout(() => {
+    const el = document.querySelector(hash)
+    if (el) el.scrollIntoView({ behavior: 'smooth' })
+    else window.location.hash = hash
+  }, 50)
 }
 
+function handleOutsideClick(e) {
+  const wrap = searchWrapRef.value
+  if (wrap && !wrap.contains(e.target)) closeSearchDropdown()
+  const userWrap = userMenuRef.value
+  if (userWrap && !userWrap.contains(e.target)) closeUserMenu()
+}
 
 function handleMenuBtnClick(e) {
   e.stopPropagation()
   isMobileMenuOpen.value = !isMobileMenuOpen.value
 }
 
-function closeMobileMenu() {
-  isMobileMenuOpen.value = false
-}
+function closeMobileMenu() { isMobileMenuOpen.value = false }
 
 function handleMobileMenuClick(e) {
-  // Cierra el menú si se hace click fuera del menú
-  if (e.target.classList.contains('mobile-menu')) {
-    closeMobileMenu()
-  }
+  if (e.target.classList.contains('mobile-menu')) closeMobileMenu()
 }
 
 onMounted(async () => {
@@ -314,7 +288,7 @@ onBeforeUnmount(() => {
 <template>
   <nav>
     <div class="nav-inner">
-      <a href="#" class="logo" style="cursor:pointer;" :title="t('goHome')">CODE<span class="acc">KEYS</span></a>
+      <a href="#" class="logo" style="cursor:pointer;" :title="t('goHome')" @click.prevent="emit('go-home')">CODE<span class="acc">KEYS</span></a>
 
       <div ref="searchWrapRef" class="nav-search-wrap">
         <div class="nav-search" role="search">
@@ -399,9 +373,9 @@ onBeforeUnmount(() => {
       </div>
 
       <div class="nav-links" id="navLinks">
-        <a href="#secTiendas">{{ t('stores') }}</a>
-        <a href="#secOfertas">{{ t('deals') }}</a>
-        <a href="#secUpcoming">🚀 {{ t('upcoming') }}</a>
+        <a href="#" @click.prevent="goToSection('#secTiendas')">{{ t('stores') }}</a>
+        <a href="#" @click.prevent="goToSection('#secOfertas')">{{ t('deals') }}</a>
+        <a href="#" @click.prevent="goToSection('#secUpcoming')">🚀 {{ t('upcoming') }}</a>
         <a href="#" @click.prevent="emit('open-blog')">📝 {{ t('blog') }}</a>
 
         <template v-if="!props.currentUser">
@@ -431,10 +405,10 @@ onBeforeUnmount(() => {
 
     <div v-if="isMobileMenuOpen" id="mobileMenu" class="mobile-menu" role="navigation" @click.self="handleMobileMenuClick">
       <button class="mm-close-btn" aria-label="Cerrar menú" @click="closeMobileMenu">✕</button>
-      <a href="#secTiendas" class="mm-link" @click="closeMobileMenu">🏪 {{ t('stores') }}</a>
-      <a href="#secOfertas" class="mm-link" @click="closeMobileMenu">🔥 {{ t('deals') }}</a>
-      <a href="#secUpcoming" class="mm-link" @click="closeMobileMenu">🚀 {{ t('upcomingLong') }}</a>
-      <a href="#" class="mm-link" @click="closeMobileMenu">🔔 {{ t('alerts') }}</a>
+      <a href="#" class="mm-link" @click.prevent="goToSection('#secTiendas')">🏪 {{ t('stores') }}</a>
+      <a href="#" class="mm-link" @click.prevent="goToSection('#secOfertas')">🔥 {{ t('deals') }}</a>
+      <a href="#" class="mm-link" @click.prevent="goToSection('#secUpcoming')">🚀 {{ t('upcomingLong') }}</a>
+      <a href="#" class="mm-link">🔔 {{ t('alerts') }}</a>
       <a href="#" class="mm-link" @click.prevent="emit('open-blog'); closeMobileMenu()">📝 {{ t('blog') }}</a>
       <div class="mm-btns">
         <a href="#" class="mm-btn-login" @click.prevent="openLogin; closeMobileMenu()">{{ t('login') }}</a>
@@ -443,4 +417,3 @@ onBeforeUnmount(() => {
     </div>
   </nav>
 </template>
-

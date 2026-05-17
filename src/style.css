@@ -2463,3 +2463,29 @@ footer {
   .foot-top { grid-template-columns: 1fr; }
 }
 
+.genre-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  text-align: center;
+  gap: 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  margin-bottom: 14px;
+}
+.genre-empty-icon { font-size: 3rem; }
+.genre-empty-title {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+.genre-empty-text {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+.genre-empty-text strong { color: var(--accent); }
