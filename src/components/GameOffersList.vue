@@ -1,227 +1,425 @@
 <template>
-  <div class="offers-list">
-    <div v-for="offer in offers" :key="offer.id" class="offer-card">
-      <div class="offer-left">
-        <img :src="offer.storeLogo" :alt="offer.storeName" class="store-logo" />
-        <div class="store-info">
-          <div class="store-name">{{ offer.storeName }}</div>
-          <div class="store-rating">
-            <span v-for="n in 5" :key="n" class="star" :class="{ filled: n <= Math.round(offer.rating) }">★</span>
-            <span class="rating-num">{{ offer.rating }}/5</span>
-            <span class="votes">({{ offer.votes }})</span>
+  <div class="offers-wrap">
+    <div v-if="!offers.length" class="offers-empty">
+      <span>No hay ofertas disponibles para este juego.</span>
+    </div>
+
+    <div class="tiendas-comparadas">
+      <h3 class="tiendas-title">
+        <span class="tiendas-title-bar"></span>
+        Tiendas comparadas
+      </h3>
+
+      <div class="tiendas-grid">
+        <div
+          v-for="(offer, i) in offers"
+          :key="`${offer.storeKey}-${offer.platformKey}-${i}`"
+          class="tienda-card"
+          :class="{ 'tienda-card--best': i === 0 }"
+          @click="openStore(offer)"
+        >
+          <!-- Cabecera tienda -->
+          <div class="tienda-card-header">
+            <div class="store-logo-wrap">
+              <img
+                v-if="offer.storeLogo"
+                :src="offer.storeLogo"
+                :alt="offer.storeName"
+                class="store-logo"
+                @error="e => e.target.style.display='none'"
+              />
+              <span v-else class="store-logo-fallback">{{ offer.storeName?.slice(0,2).toUpperCase() }}</span>
+            </div>
+            <div class="store-meta">
+              <div class="store-name">{{ offer.storeName }}</div>
+              <div class="store-url">{{ storeUrlShort(offer.storeUrl) }}</div>
+            </div>
+            <button
+              v-if="i === 0"
+              class="best-badge"
+              tabindex="-1"
+            >Mejor precio</button>
+            <button
+              v-else
+              class="minus-badge"
+              tabindex="-1"
+            >—</button>
           </div>
+
+          <!-- Precio -->
+          <div class="tienda-card-price-row">
+            <span class="tienda-label">Mejor oferta</span>
+            <div class="tienda-price-wrap">
+              <span
+                class="tienda-price"
+                :class="validPrice(offer.price) ? 'tienda-price--ok' : 'tienda-price--empty'"
+              >
+                {{ validPrice(offer.price) ? money(offer.price) : '—' }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Tags -->
+          <div class="tienda-tags-row">
+            <span class="offer-tag">{{ offer.platformName }}</span>
+            <span v-if="offer.region" class="offer-tag">{{ offer.region }}</span>
+            <span
+              class="offer-tag"
+              :class="offer.stock === 'ok' ? 'offer-tag--green' : 'offer-tag--red'"
+            >{{ offer.stock === 'ok' ? 'En stock' : 'Agotado' }}</span>
+          </div>
+
+          <!-- Rating -->
+          <div class="tienda-rating-row">
+            <span
+              v-for="n in 5"
+              :key="n"
+              class="star"
+              :class="{ filled: n <= Math.round(offer.rating || 0) }"
+            >★</span>
+            <span class="rating-num">{{ offer.rating || '—' }}/5</span>
+            <span class="votes">({{ offer.votes || 0 }} votos)</span>
+          </div>
+
+          <!-- Juegos disponibles en tienda -->
+          <div class="tienda-count-row">
+            <span class="tienda-count-label">Juegos disponibles:</span>
+            <span class="tienda-count-val">
+              {{ storeCount(offer.storeKey) }}
+            </span>
+          </div>
+
+          <!-- Botón visitar -->
+          <button class="visit-btn" @click.stop="openStore(offer)">
+            Visitar tienda
+          </button>
         </div>
-        <div class="platform">
-          <img :src="offer.platformIcon" :alt="offer.platform" class="platform-icon" />
-          <span>{{ offer.platform }}</span>
-        </div>
-        <div class="edition">{{ offer.edition }}</div>
-      </div>
-      <div class="offer-center">
-        <div class="original-price" v-if="offer.originalPrice">
-          <s>{{ money(offer.originalPrice) }}</s>
-        </div>
-        <div class="coupon-box" v-if="offer.couponCode">
-          <span class="coupon-percent">-{{ offer.couponPercent }}%</span>
-          <span class="coupon-code">{{ offer.couponCode }}</span>
-          <button class="copy-btn" @click="copyCoupon(offer.couponCode)">📋</button>
-        </div>
-      </div>
-      <div class="offer-right">
-        <div class="final-price">{{ money(offer.finalPrice) }}</div>
-        <button class="buy-btn">➔</button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { fetchTiendasConteo } from '../services/apiService'
+
 const props = defineProps({
-  offers: { type: Array, required: true }
+  offers:   { type: Array,  required: true },
+  currency: { type: String, default: 'EUR' },
+  gameName: { type: String, default: '' }
 })
 
-function money(val) {
-  return typeof val === 'number' ? `€${val.toFixed(2)}` : val
+const USD_RATE = 1.08
+const conteoMap = ref({})
+
+onMounted(async () => {
+  try {
+    const conteo = await fetchTiendasConteo()
+    conteo.forEach(c => {
+      conteoMap.value[c.storeKey] = c.totalJuegos
+    })
+  } catch {
+    conteoMap.value = {}
+  }
+})
+
+function storeCount(key) {
+  const n = conteoMap.value[key?.toLowerCase()]
+  if (n == null) return '—'
+  return n.toLocaleString('es-ES') + ' juegos'
 }
 
-function copyCoupon(code) {
-  navigator.clipboard.writeText(code)
+function validPrice(val) {
+  const n = parseFloat(val)
+  return !isNaN(n) && n > 0
+}
+
+function money(val) {
+  if (!validPrice(val)) return '—'
+  const num = parseFloat(val)
+  const normalized = props.currency === 'USD' ? num * USD_RATE : num
+  const symbol = props.currency === 'USD' ? '$' : '€'
+  return `${symbol} ${normalized.toFixed(2)}`
+}
+
+function storeUrlShort(url) {
+  if (!url) return ''
+  return url.replace(/^https?:\/\//, '').replace(/\/$/, '')
+}
+
+const SEARCH_TEMPLATES = {
+  instantgaming: q => `https://www.instant-gaming.com/es/busqueda/?q=${q}`,
+  cdkeys:        q => `https://www.cdkeys.com/catalogsearch/result/?q=${q}`,
+  eneba:         q => `https://www.eneba.com/store/all-games?text=${q}`,
+  kinguin:       q => `https://www.kinguin.net/listing?search=${q}`,
+  g2a:           q => `https://www.g2a.com/search?query=${q}`,
+  gamivo:        q => `https://www.gamivo.com/search#search=${q}`,
+  hrkgame:       q => `https://www.hrkgame.com/en/games/search/?q=${q}`,
+  mmoga:         q => `https://www.mmoga.com/games/?search=${q}`,
+  sologame:      q => `https://www.sologame.com/search?q=${q}`,
+  royalcdkeys:   q => `https://www.royalcdkeys.com/search?q=${q}`,
+}
+
+function buildUrl(offer) {
+  const key = offer.storeKey?.toLowerCase()
+  const query = encodeURIComponent(props.gameName || '')
+  const template = SEARCH_TEMPLATES[key]
+  if (template && query) return template(query)
+  return offer.storeUrl || '#'
+}
+
+function openStore(offer) {
+  window.open(buildUrl(offer), '_blank', 'noopener,noreferrer')
 }
 </script>
 
 <style scoped>
-.offers-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.offer-card {
-  display: flex;
-  align-items: center;
-  background: var(--bg-elevated);
-  border-radius: 10px;
-  padding: 16px;
-  box-shadow: 0 2px 8px #0002;
-  border: 2px solid var(--border-medium);
-  transition: box-shadow 0.2s, border-color 0.2s;
+.offers-wrap {
+  width: 100%;
 }
 
-:root[data-theme='light'] .offer-card {
-  border-color: var(--accent) !important;
+.offers-empty {
+  color: var(--text-faint);
+  padding: 24px 0;
+  text-align: center;
+  font-size: 0.95rem;
 }
-.offer-card:hover {
-  box-shadow: 0 4px 16px #0004;
-}
-.offer-left {
+
+.tiendas-title {
   display: flex;
   align-items: center;
-  gap: 12px;
-  flex: 2;
+  gap: 10px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 16px;
+}
+.tiendas-title-bar {
+  width: 4px;
+  height: 18px;
+  border-radius: 2px;
+  background: var(--accent, #f97316);
+  flex-shrink: 0;
+}
+
+/* Grid de tarjetas */
+.tiendas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.tienda-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  cursor: pointer;
+  transition: border-color 0.18s, transform 0.18s, box-shadow 0.18s;
+}
+.tienda-card:hover {
+  border-color: var(--accent, #f97316);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+}
+.tienda-card--best {
+  border-color: var(--green, #22c55e);
+}
+.tienda-card--best:hover {
+  border-color: var(--green, #22c55e);
+}
+
+/* Cabecera */
+.tienda-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.store-logo-wrap {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-base);
+  border: 1px solid var(--border-medium);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
 }
 .store-logo {
-  width: 36px;
-  height: 36px;
-  border-radius: 6px;
-  background: #fff;
+  width: 26px;
+  height: 26px;
   object-fit: contain;
 }
-.store-info {
-  display: flex;
-  flex-direction: column;
+.store-logo-fallback {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--text-secondary);
+}
+.store-meta {
+  flex: 1;
+  min-width: 0;
 }
 .store-name {
-  font-weight: bold;
+  font-size: 13px;
+  font-weight: 700;
   color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.store-rating {
-  font-size: 0.95em;
-  color: var(--text-muted);
+.store-url {
+  font-size: 10px;
+  color: var(--text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.star {
-  color: #ffd700;
-  margin-right: 1px;
-  opacity: 0.35;
-  font-size: 1.1em;
-  transition: opacity 0.15s;
-}
-.star.filled {
-  opacity: 1;
-}
-.rating-num {
-  color: var(--text-primary);
-  margin-left: 4px;
-  margin-right: 2px;
-  font-weight: 500;
-}
-.votes {
-  color: #888;
-  margin-left: 2px;
-}
-.platform {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: 16px;
-  color: var(--blue);
-  font-size: 0.95em;
-}
-.platform-icon {
-  width: 20px;
-  height: 20px;
-}
-.edition {
-  margin-left: 16px;
-  color: var(--text-muted);
-  font-size: 0.95em;
-}
-.offer-center {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
-}
-.original-price {
-  color: var(--text-muted);
-  font-size: 1em;
-}
-.coupon-box {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--bg-surface);
-  border-radius: 6px;
-  padding: 2px 8px;
-  font-size: 0.95em;
-  color: var(--text-primary);
-}
-.coupon-percent {
-  color: #ff5e5e;
-  font-weight: bold;
-}
-.coupon-code {
-  font-family: monospace;
-  background: var(--bg-elevated);
-  border-radius: 4px;
-  padding: 1px 4px;
-  margin: 0 2px;
-}
-.copy-btn {
-  background: none;
+
+.best-badge {
+  background: var(--green, #22c55e);
+  color: #fff;
   border: none;
-  color: #b5e0ff;
-  cursor: pointer;
-  font-size: 1.1em;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  white-space: nowrap;
+  cursor: default;
 }
-.offer-right {
-  flex: 0 0 110px;
+.minus-badge {
+  background: var(--bg-base);
+  color: var(--text-faint);
+  border: 1px solid var(--border-medium);
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 8px;
+  cursor: default;
+}
+
+/* Precio */
+.tienda-card-price-row {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-base);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
 }
-.final-price {
-  font-size: 1.3em;
-  font-weight: bold;
+.tienda-label {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+.tienda-price--ok {
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--green, #22c55e);
+  font-family: var(--font-display);
+}
+.tienda-price--empty {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-faint);
+}
+
+/* Tags */
+.tienda-tags-row {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.offer-tag {
+  font-size: 10px;
+  font-weight: 600;
+  background: var(--bg-base);
+  border: 1px solid var(--border-medium);
+  color: var(--text-faint);
+  padding: 2px 7px;
+  border-radius: 3px;
+}
+.offer-tag--green {
+  background: var(--green-dim);
+  border-color: rgba(34,197,94,0.3);
   color: var(--green);
 }
-.buy-btn {
-  background: #3fffad;
-  color: #23263a;
-  border: none;
-  border-radius: 6px;
-  padding: 6px 14px;
-  font-size: 1.2em;
+.offer-tag--red {
+  background: var(--red-dim);
+  border-color: rgba(239,68,68,0.3);
+  color: var(--red);
+}
+
+/* Rating */
+.tienda-rating-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 12px;
+}
+.star {
+  color: var(--yellow, #f59e0b);
+  opacity: 0.25;
+}
+.star.filled { opacity: 1; }
+.rating-num {
+  color: var(--text-primary);
+  font-weight: 600;
+  margin-left: 5px;
+  font-size: 11px;
+}
+.votes {
+  color: var(--text-faint);
+  font-size: 11px;
+  margin-left: 3px;
+}
+
+/* Conteo juegos */
+.tienda-count-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-faint);
+  border-top: 1px solid var(--border-faint);
+  padding-top: 8px;
+}
+.tienda-count-val {
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+/* Botón visitar */
+.visit-btn {
+  width: 100%;
+  background: var(--bg-base);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 9px 0;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background 0.18s, border-color 0.18s, color 0.18s;
+  margin-top: auto;
 }
-.buy-btn:hover {
-  background: #2fdc8c;
+.visit-btn:hover {
+  background: var(--accent, #f97316);
+  border-color: var(--accent, #f97316);
+  color: #fff;
 }
+
 @media (max-width: 600px) {
-  .offer-card {
-    flex-direction: column;
-    align-items: stretch;
-    padding: 10px 6px;
-    gap: 8px;
+  .tiendas-grid {
+    grid-template-columns: 1fr 1fr;
   }
-  .offer-left, .offer-center, .offer-right {
-    flex: unset;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-  }
-  .offer-left {
-    flex-direction: row;
-    gap: 8px;
-  }
-  .store-logo {
-    width: 28px;
-    height: 28px;
-  }
-  .final-price {
-    font-size: 1.1em;
+}
+@media (max-width: 400px) {
+  .tiendas-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

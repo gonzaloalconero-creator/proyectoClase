@@ -73,3 +73,15 @@ export async function fetchGeneros() {
   if (!res.ok) throw new Error(`Error ${res.status} cargando generos`)
   return res.json()
 }
+
+export async function fetchTiendasConteo() {
+  const res = await fetch(`${BASE}/tiendas/conteo`)
+  if (!res.ok) throw new Error(`Error ${res.status} cargando conteo tiendas`)
+  return res.json()
+}
+
+export async function fetchTiendasAhorro() {
+  const res = await fetch(`${BASE}/tiendas/ahorro`)
+  if (!res.ok) throw new Error(`Error ${res.status} cargando ahorro tiendas`)
+  return res.json()
+}
