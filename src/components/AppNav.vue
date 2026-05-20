@@ -10,7 +10,7 @@ const props = defineProps({
   currentUser: { type: Object, default: null }
 })
 
-const emit = defineEmits(['open-auth', 'open-game', 'logout', 'open-admin', 'open-history', 'open-blog', 'go-home', 'go-section'])
+const emit = defineEmits(['open-auth', 'open-game', 'logout', 'open-admin', 'open-history', 'open-alerts', 'open-config', 'open-blog', 'go-home', 'go-section'])
 
 const isMobileMenuOpen = ref(false)
 
@@ -72,6 +72,7 @@ const platformMeta = {
 const gameCatalog = ref([])
 const searchWrapRef = ref(null)
 const userMenuRef = ref(null)
+const userMenuMobileRef = ref(null)
 const searchQuery = ref('')
 const searchSelectedIndex = ref(-1)
 const searchCurrentResults = ref([])
@@ -237,6 +238,16 @@ function openHistoryPage() {
   emit('open-history')
 }
 
+function openAlertsPage() {
+  closeUserMenu()
+  emit('open-alerts')
+}
+
+function openConfigPage() {
+  closeUserMenu()
+  emit('open-config')
+}
+
 function goToSection(hash) {
   emit('go-section', hash)
   closeMobileMenu()
@@ -250,8 +261,11 @@ function goToSection(hash) {
 function handleOutsideClick(e) {
   const wrap = searchWrapRef.value
   if (wrap && !wrap.contains(e.target)) closeSearchDropdown()
-  const userWrap = userMenuRef.value
-  if (userWrap && !userWrap.contains(e.target)) closeUserMenu()
+  const desktop = userMenuRef.value
+  const mobile = userMenuMobileRef.value
+  const insideDesktop = desktop && desktop.contains(e.target)
+  const insideMobile = mobile && mobile.contains(e.target)
+  if (!insideDesktop && !insideMobile) closeUserMenu()
 }
 
 function handleMenuBtnClick(e) {
@@ -396,10 +410,10 @@ onBeforeUnmount(() => {
               <div class="num-email">{{ props.currentUser.email }}</div>
             </div>
             <div class="num-item" role="menuitem">⭐ Mis favoritos</div>
-            <div class="num-item" role="menuitem">🔔 Mis alertas</div>
+            <div class="num-item" role="menuitem" @click="openAlertsPage">🔔 Mis alertas</div>
             <div class="num-item" role="menuitem" @click="openHistoryPage">📋 {{ t('history') }}</div>
             <div v-if="isAdmin" class="num-item" role="menuitem" @click="openAdminPanel">🛠️ Panel admin</div>
-            <div class="num-item" role="menuitem">⚙️ Configuracion</div>
+            <div class="num-item" role="menuitem" @click="openConfigPage">⚙️ Configuracion</div>
             <div class="num-item danger" role="menuitem" @click="doLogout">🚪 Cerrar sesion</div>
           </div>
         </div>
@@ -408,7 +422,7 @@ onBeforeUnmount(() => {
       <!-- Avatar en móvil (cuando hay usuario) -->
       <div
         v-if="props.currentUser"
-        ref="userMenuRef"
+        ref="userMenuMobileRef"
         class="nav-avatar-mobile"
       >
         <div class="nav-avatar" role="button" @click="toggleUserMenu">{{ userInitials }}</div>

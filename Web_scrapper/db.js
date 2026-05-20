@@ -18,18 +18,20 @@ export async function closePool() {
 }
 
 /**
- * Actualiza (o inserta) una oferta en la BD.
- *
- * @param {Object} opts
- * @param {string} opts.slug       - Slug del juego (ej: 'cyberpunk')
- * @param {string} opts.storeCode  - Código de la tienda (ej: 'cdkeys')
- * @param {string} opts.platform   - Plataforma (ej: 'steam')
- * @param {number} opts.price      - Precio scrapeado
- * @param {string} opts.region     - Región (ej: 'Global', 'Europa')
- * @param {string} opts.stock      - Stock: 'ok' | 'low' | 'out'
- * @param {string} opts.tipo       - Tipo: 'code' | 'account'
- * @param {string} opts.url        - URL del producto en la tienda
+ * Devuelve un Set con todos los slugs que existen en la tabla `juegos`.
+ * Se llama una vez al inicio de cada ciclo para filtrar la lista de juegos
+ * antes de scraping, evitando procesar juegos que no están en la BD.
  */
+export async function getValidSlugs() {
+  const conn = await pool.getConnection();
+  try {
+    const [rows] = await conn.query('SELECT slug FROM juegos');
+    return new Set(rows.map(r => r.slug));
+  } finally {
+    conn.release();
+  }
+}
+
 export async function updateOfferInDB({ slug, storeCode, platform, price, region, stock, tipo, url }) {
   const conn = await pool.getConnection();
   try {
@@ -43,16 +45,14 @@ export async function updateOfferInDB({ slug, storeCode, platform, price, region
     }
 
     const [[existing]] = await conn.query(
-      `SELECT id, precio FROM ofertas
-       WHERE juego_id = ? AND tienda_id = ? AND plataforma_id = ? AND activa = 1
+      `SELECT id FROM ofertas
+       WHERE juego_id = ? AND tienda_id = ? AND plataforma_id = ? AND tipo = ? AND region = ? AND activa = 1
        LIMIT 1`,
-      [game.id, store.id, plat.id]
+      [game.id, store.id, plat.id, tipo, region]
     );
 
     if (existing) {
-      // Actualizar precio usando el stored procedure (guarda historial automáticamente)
       await conn.query('CALL sp_actualizar_precio(?, ?)', [existing.id, price]);
-      // Actualizar también la URL del producto
       await conn.query(
         'UPDATE ofertas SET url_producto = ? WHERE id = ?',
         [url || null, existing.id]

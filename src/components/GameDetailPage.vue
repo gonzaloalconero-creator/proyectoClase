@@ -14,6 +14,43 @@
       </div>
     </div>
 
+    <!-- Alerta de precio -->
+    <div v-if="currentUser" class="alert-box">
+      <div class="alert-box-header">
+        <span>🔔 Alerta de precio</span>
+        <template v-if="!alertExists">
+          <button v-if="!showAlertForm" class="alert-btn-create" @click="openAlertForm">
+            Crear alerta
+          </button>
+        </template>
+        <template v-else>
+          <span class="alert-active-badge">Alerta activa</span>
+          <button class="alert-btn-delete" @click="deleteAlert">Eliminar alerta</button>
+        </template>
+      </div>
+
+      <div v-if="showAlertForm && !alertExists" class="alert-form">
+        <span class="alert-form-label">Avísame cuando el precio baje de:</span>
+        <div class="alert-form-row">
+          <input
+            v-model="alertPrice"
+            type="number"
+            min="0.01"
+            step="0.01"
+            placeholder="Ej: 9.99"
+            class="alert-input"
+            @keydown.enter="saveAlert"
+          />
+          <span class="alert-currency">€</span>
+          <button class="alert-btn-save" @click="saveAlert">Guardar</button>
+          <button class="alert-btn-cancel" @click="showAlertForm = false">Cancelar</button>
+        </div>
+        <span v-if="alertFeedback" :class="['alert-feedback', { ok: alertFeedback.startsWith('✓') }]">
+          {{ alertFeedback }}
+        </span>
+      </div>
+    </div>
+
     <div class="store-prices-box">
       <button class="back-btn" @click="$emit('back')">← Volver</button>
       <h3>Precios en tiendas</h3>
@@ -37,10 +74,12 @@ import GameOffersList from './GameOffersList.vue'
 import Chart from 'chart.js/auto'
 import { getPriceHistory } from '../services/priceHistory'
 import { fetchOfertas, fetchPrecioHistorial } from '../services/apiService'
+import { addAlert, hasAlert, removeAlert, getAlerts } from '../services/alertsDb'
 
 const props = defineProps({
-  game:     { type: Object, required: true },
-  currency: { type: String, default: 'EUR' }
+  game:        { type: Object, required: true },
+  currency:    { type: String, default: 'EUR' },
+  currentUser: { type: Object, default: null }
 })
 
 const isFavorite = ref(false)
@@ -115,6 +154,53 @@ async function loadGameData(slug) {
   setTimeout(renderChart, 100)
 }
 
+// ── Alertas ──────────────────────────────────────────────────
+const showAlertForm = ref(false)
+const alertPrice = ref('')
+const alertFeedback = ref('')
+const alertExists = ref(false)
+
+function refreshAlertState() {
+  if (props.currentUser && props.game?.key) {
+    alertExists.value = hasAlert(props.currentUser.id, props.game.key)
+  } else {
+    alertExists.value = false
+  }
+}
+
+function openAlertForm() {
+  const cheapest = storeOffers.value.length
+    ? storeOffers.value.reduce((m, o) => o.price < m.price ? o : m, storeOffers.value[0])
+    : null
+  alertPrice.value = cheapest ? String(cheapest.price) : ''
+  alertFeedback.value = ''
+  showAlertForm.value = true
+}
+
+function saveAlert() {
+  const price = parseFloat(alertPrice.value)
+  if (!price || price <= 0) { alertFeedback.value = 'Introduce un precio válido.'; return }
+  const ok = addAlert(props.currentUser.id, {
+    gameSlug: props.game.key,
+    gameName: props.game.name,
+    gameImg:  props.game.img,
+    targetPrice: price
+  })
+  if (ok) {
+    alertFeedback.value = '✓ Alerta creada'
+    alertExists.value = true
+    setTimeout(() => { showAlertForm.value = false; alertFeedback.value = '' }, 1200)
+  } else {
+    alertFeedback.value = 'Ya tienes una alerta para este juego.'
+  }
+}
+
+function deleteAlert() {
+  const alert = getAlerts(props.currentUser.id).find(a => a.gameSlug === props.game.key)
+  if (alert) { removeAlert(alert.id); alertExists.value = false; showAlertForm.value = false }
+}
+
+watch(() => props.game?.key, refreshAlertState, { immediate: true })
 watch(() => props.game, (g) => { if (g) loadGameData(g.key) })
 onMounted(() => { if (props.game) loadGameData(props.game.key) })
 </script>
@@ -246,4 +332,107 @@ onMounted(() => { if (props.game) loadGameData(props.game.key) })
   .game-detail-title { font-size: 1.3em; text-align: center; }
   .back-btn { top: 10px; right: 16px; padding: 6px 16px; font-size: 0.95em; }
 }
+
+/* Alerta de precio */
+.alert-box {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 16px 24px;
+  margin-bottom: 20px;
+  max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.alert-box-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.alert-active-badge {
+  font-size: 11px;
+  background: #16a34a22;
+  color: #16a34a;
+  border: 1px solid #16a34a44;
+  border-radius: 20px;
+  padding: 2px 10px;
+  font-weight: 700;
+}
+.alert-btn-create {
+  margin-left: auto;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 6px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: background var(--transition);
+}
+.alert-btn-create:hover { background: var(--accent-hover); }
+.alert-btn-delete {
+  margin-left: auto;
+  background: transparent;
+  color: #ef4444;
+  border: 1px solid #ef444466;
+  border-radius: var(--radius-sm);
+  padding: 5px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: all var(--transition);
+}
+.alert-btn-delete:hover { background: #ef444411; }
+.alert-form {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.alert-form-label { font-size: 13px; color: var(--text-secondary); }
+.alert-form-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.alert-input {
+  width: 110px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  padding: 7px 10px;
+  font-size: 14px;
+  font-family: var(--font-body);
+  outline: none;
+}
+.alert-input:focus { border-color: var(--accent); }
+.alert-currency { font-size: 15px; font-weight: 700; color: var(--text-muted); }
+.alert-btn-save {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 7px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: background var(--transition);
+}
+.alert-btn-save:hover { background: var(--accent-hover); }
+.alert-btn-cancel {
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  padding: 7px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: var(--font-body);
+}
+.alert-feedback { font-size: 12px; color: #ef4444; }
+.alert-feedback.ok { color: #16a34a; font-weight: 700; }
 </style>

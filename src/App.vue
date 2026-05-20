@@ -16,8 +16,12 @@ import GameDetailPage from './components/GameDetailPage.vue'
 import BlogPage from './pages/BlogPage.vue'
 import AdminPanelPage from './components/AdminPanelPage.vue'
 import HistoryPage from './components/HistoryPage.vue'
+import ConfigPage from './components/ConfigPage.vue'
+import AlertsPage from './components/AlertsPage.vue'
+import AlertBanner from './components/AlertBanner.vue'
 import { getSessionUser, logoutUser } from './services/mockAuthDb'
 import { addVisitedGameToHistory, clearHistorySession, getSessionHistory } from './services/sessionHistoryDb'
+import { checkAlerts } from './services/alertsDb'
 
 const blogPage = ref(false)
 const platformCounts = ref({ steam: 0, epic: 0, ps5: 0, ps4: 0, xbox: 0, switch: 0 })
@@ -26,6 +30,8 @@ function resetAllPages() {
   blogPage.value = false
   adminPage.value = false
   historyPage.value = false
+  configPage.value = false
+  alertsPage.value = false
   categoryPage.value = null
   upcomingPage.value = null
   gameDetailPage.value = false
@@ -67,9 +73,13 @@ const categoryPage = ref(null)
 const upcomingPage = ref(null)
 const historyPage = ref(false)
 const adminPage = ref(false)
+const configPage = ref(false)
+const alertsPage = ref(false)
 const currentUser = ref(null)
 const catalogVersion = ref(0)
 const sessionHistory = ref([])
+const triggeredAlerts = ref([])
+const showAlertBanner = ref(false)
 
 function applyTheme(value) {
   document.documentElement.setAttribute('data-theme', value)
@@ -106,6 +116,11 @@ onMounted(() => {
   if (savedLocale === 'es' || savedLocale === 'en') locale.value = savedLocale
   currentUser.value = getSessionUser()
   sessionHistory.value = currentUser.value ? getSessionHistory(currentUser.value.id) : []
+  if (currentUser.value) {
+    checkAlerts(currentUser.value.id).then(triggered => {
+      if (triggered.length) { triggeredAlerts.value = triggered; showAlertBanner.value = true }
+    })
+  }
   document.documentElement.setAttribute('lang', locale.value)
 
   // Escucha clics en enlaces de sección (Tiendas, Ofertas, etc.) para cerrar páginas
@@ -153,6 +168,26 @@ function closeHistoryPage() {
   historyPage.value = false
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
+function openConfigPage() {
+  if (!currentUser.value) return
+  resetAllPages()
+  configPage.value = true
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+function closeConfigPage() {
+  configPage.value = false
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+function openAlertsPage() {
+  if (!currentUser.value) return
+  resetAllPages()
+  alertsPage.value = true
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+function closeAlertsPage() {
+  alertsPage.value = false
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
 function openAuth(mode = 'login') {
   authMode.value = mode
   isAuthOpen.value = true
@@ -172,6 +207,7 @@ function openGame(game) {
     addVisitedGameToHistory(currentUser.value.id, game)
     sessionHistory.value = getSessionHistory(currentUser.value.id)
   }
+  resetAllPages()
   selectedGame.value = game
   gameDetailPage.value = true
   window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -209,12 +245,17 @@ function onAdminCatalogUpdated() { catalogVersion.value += 1 }
 </script>
 
 <template>
+  <AlertBanner
+    v-if="showAlertBanner"
+    :alerts="triggeredAlerts"
+    @dismissed-all="showAlertBanner = false"
+  />
   <TopBar :theme="theme" :currency="currency" :locale="locale" @toggle-theme="toggleTheme"
     @toggle-currency="setCurrency" @toggle-locale="toggleLocale" />
   <AppNav :key="`nav-${catalogVersion}`" :locale="locale" :selected-platform="selectedPlatform" :currency="currency"
     :current-user="currentUser" @open-auth="openAuth" @open-game="openGame" @open-history="openHistoryPage"
-    @open-admin="openAdminPanel" @logout="onLogout" @open-blog="openBlogPage" @go-home="resetAllPages"
-    @go-section="onGoSection" />
+    @open-admin="openAdminPanel" @open-alerts="openAlertsPage" @open-config="openConfigPage"
+    @logout="onLogout" @open-blog="openBlogPage" @go-home="resetAllPages" @go-section="onGoSection" />
   <PlatformTabs :selected="selectedPlatform" @select="setPlatform" />
   <PriceTicker :key="`ticker-${catalogVersion}`" :currency="currency" :locale="locale" />
 
@@ -237,7 +278,16 @@ function onAdminCatalogUpdated() { catalogVersion.value += 1 }
   </div>
 
   <div v-else-if="gameDetailPage && selectedGame" class="page page-full">
-    <GameDetailPage :game="selectedGame" @back="closeGameDetailPage" />
+    <GameDetailPage :game="selectedGame" :current-user="currentUser" @back="closeGameDetailPage" />
+  </div>
+
+  <div v-else-if="alertsPage" class="page page-full">
+    <AlertsPage :current-user="currentUser" @back="closeAlertsPage" />
+  </div>
+
+  <div v-else-if="configPage" class="page page-full">
+    <ConfigPage :current-user="currentUser" :theme="theme" :currency="currency" :locale="locale"
+      @back="closeConfigPage" @toggle-theme="toggleTheme" @toggle-currency="setCurrency" @toggle-locale="toggleLocale" />
   </div>
 
   <div v-else-if="blogPage" class="page page-full">
